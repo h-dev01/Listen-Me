@@ -536,7 +536,7 @@ function SpellBtn({ onClick, children, color='gold' }: { onClick:()=>void; child
 // ── Steps ──────────────────────────────────────────────────────
 function Steps({ cur, total }: { cur:number; total:number }) {
   return (
-    <div style={{ position:'absolute', bottom:16, left:0, width:'100%', display:'flex', justifyContent:'center', gap:8, zIndex:50, pointerEvents:'none' }}>
+    <div style={{ position:'absolute', bottom:'calc(10px + env(safe-area-inset-bottom, 0px))', left:0, width:'100%', display:'flex', justifyContent:'center', gap:8, zIndex:50, pointerEvents:'none' }}>
       {Array.from({ length:total }, (_,i) => (
         <div key={i} style={{ width:i===cur?22:8, height:8, borderRadius:4, background:i<=cur?'#d3a625':'rgba(255,255,255,0.15)', boxShadow:i<=cur?'0 0 8px rgba(211,166,37,0.8)':'none', transition:'all 0.4s' }}/>
       ))}
@@ -1618,9 +1618,11 @@ export default function App() {
   }
 
   const TOTAL = 8;
+  const SAB = 'env(safe-area-inset-bottom, 0px)';
   const PAGE: React.CSSProperties = {
     position:'absolute', inset:0, display:'flex', flexDirection:'column',
-    alignItems:'center', justifyContent:'center', overflow:'hidden',
+    alignItems:'center', justifyContent:'flex-start',
+    overflowX:'hidden', overflowY:'auto', WebkitOverflowScrolling:'touch' as never,
   };
 
   return (
