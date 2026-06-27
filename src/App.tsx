@@ -475,10 +475,170 @@ function Parchment({ children, style }: { children:React.ReactNode; style?:React
   );
 }
 
+// ── Envelope opening scene ─────────────────────────────────────
+type EnvState = 'sealed'|'cracking'|'opening'|'risen';
+
+const SEAL_SPARKS = Array.from({ length: 24 }, (_,i) => ({
+  angle: (i/24)*360, dist: Math.random()*60+30,
+  dur: Math.random()*0.5+0.4, size: Math.random()*8+5,
+  color: ['#d3a625','#f0c75e','#740001','#ae0001','#ff6600'][Math.floor(Math.random()*5)],
+}));
+
+function EnvelopeScene({ onDone }: { onDone: ()=>void }) {
+  const [env, setEnv] = useState<EnvState>('sealed');
+  const [particles, setParticles] = useState(false);
+
+  function tap() {
+    if(env !== 'sealed') return;
+    setEnv('cracking');
+    setTimeout(()=>{ setParticles(true); setEnv('opening'); }, 500);
+    setTimeout(()=>setEnv('risen'), 1400);
+    setTimeout(()=>onDone(), 2800);
+  }
+
+  const W = 280, H = 176;
+
+  return (
+    <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', zIndex:20 }}>
+      <Night/>
+      <Castle/>
+      <GoldenSnitch/>
+
+      <div style={{ position:'relative', zIndex:30, display:'flex', flexDirection:'column', alignItems:'center', gap:20, padding:'0 20px' }}>
+        {/* Header */}
+        <motion.div initial={{ y:-40, opacity:0 }} animate={{ y:0, opacity:1 }} transition={{ delay:0.4, duration:1 }}
+          style={{ textAlign:'center' }}>
+          <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(10px,2.5vw,14px)', color:'rgba(211,166,37,0.55)', letterSpacing:'0.45em', textTransform:'uppercase', margin:'0 0 6px' }}>Hogwarts School of Witchcraft &amp; Wizardry</p>
+          <div style={{ height:1, background:'linear-gradient(90deg,transparent,rgba(211,166,37,0.4),transparent)', marginBottom:6 }}/>
+          <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(15px,4vw,22px)', color:'#e8d5a0', margin:0 }}>
+            A letter has arrived for<br/>
+            <motion.span animate={{ color:['#f0c75e','#ffffff','#f0c75e'] }} transition={{ duration:3, repeat:Infinity }}
+              style={{ fontWeight:'bold', fontSize:'clamp(18px,5vw,26px)' }}>Rashi Hassani ⚡</motion.span>
+          </p>
+        </motion.div>
+
+        {/* Envelope */}
+        <motion.div initial={{ y:120, opacity:0, rotate:-6 }} animate={{ y:0, opacity:1, rotate:0 }}
+          transition={{ delay:0.8, duration:1.2, ease:[0.22,1,0.36,1] }}
+          style={{ position:'relative', width:W, cursor: env==='sealed'?'pointer':'default' }}
+          onClick={tap}>
+
+          {/* Letter emerging from envelope */}
+          <motion.div
+            style={{ position:'absolute', left:24, right:24, bottom:16, borderRadius:2, overflow:'hidden', zIndex:2, originY:1 }}
+            animate={env==='opening'||env==='risen' ? { height:200, y:-160 } : { height:0, y:0 }}
+            transition={{ duration:0.9, ease:[0.22,1,0.36,1] }}>
+            <div style={{ background:'linear-gradient(160deg,#f9ecd0,#f0d9a8)', width:'100%', height:200, padding:'14px 16px', boxSizing:'border-box', borderRadius:2, boxShadow:'0 -8px 32px rgba(0,0,0,0.5)' }}>
+              {/* Letter content */}
+              <div style={{ borderBottom:'1px solid rgba(100,50,0,0.25)', paddingBottom:8, marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:18 }}>⚡</span>
+                <div>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:9, color:'#4a2000', margin:0, letterSpacing:'0.1em', textTransform:'uppercase' }}>Hogwarts School</p>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:7, color:'rgba(74,32,0,0.6)', margin:0, letterSpacing:'0.08em' }}>of Witchcraft &amp; Wizardry</p>
+                </div>
+              </div>
+              <p style={{ fontFamily:'EB Garamond,serif', fontSize:11, color:'#3a1800', lineHeight:1.7, margin:0, fontStyle:'italic' }}>
+                Dear <strong>Rashi Hassani</strong>,<br/>
+                We are pleased to inform you<br/>
+                that you have been accepted<br/>
+                at Hogwarts School...<br/><br/>
+                <span style={{ fontSize:10, opacity:0.7 }}>Term begins on 1 September.</span>
+              </p>
+              <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:4 }}>
+                <span style={{ fontSize:12 }}>🦉</span>
+                <p style={{ fontFamily:'Cinzel,serif', fontSize:8, color:'#4a2000', margin:0, letterSpacing:'0.08em' }}>Minerva McGonagall, Deputy Headmistress</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Envelope body */}
+          <div style={{ position:'relative', width:W, height:H, zIndex:3 }}>
+            {/* Body bg */}
+            <div style={{ position:'absolute', inset:0, background:'linear-gradient(160deg,#2a1200,#1a0a00)', border:'2px solid rgba(211,166,37,0.5)', borderRadius:4, boxShadow:'0 0 40px rgba(211,166,37,0.15), 0 20px 60px rgba(0,0,0,0.7)' }}/>
+            {/* inner diagonal lines (envelope texture) */}
+            <div style={{ position:'absolute', inset:2, overflow:'hidden', borderRadius:3 }}>
+              <div style={{ position:'absolute', top:0, left:0, right:0, bottom:0, background:'repeating-linear-gradient(45deg,transparent,transparent 20px,rgba(211,166,37,0.03) 20px,rgba(211,166,37,0.03) 21px)' }}/>
+              {/* bottom-left crease */}
+              <div style={{ position:'absolute', bottom:0, left:0, width:0, height:0, borderBottom:`${H-2}px solid rgba(0,0,0,0.2)`, borderRight:`${W/2}px solid transparent` }}/>
+              {/* bottom-right crease */}
+              <div style={{ position:'absolute', bottom:0, right:0, width:0, height:0, borderBottom:`${H-2}px solid rgba(0,0,0,0.15)`, borderLeft:`${W/2}px solid transparent` }}/>
+            </div>
+            {/* Gold trim lines */}
+            <div style={{ position:'absolute', top:8, left:8, right:8, bottom:8, border:'1px solid rgba(211,166,37,0.2)', borderRadius:2, pointerEvents:'none' }}/>
+
+            {/* Flap (triangle) - hides when opening */}
+            <motion.div style={{ position:'absolute', top:-1, left:-1, right:-1, height:H*0.58, transformOrigin:'top center', zIndex:6 }}
+              animate={env==='cracking'||env==='opening'||env==='risen' ? { scaleY:0, opacity:0 } : { scaleY:1, opacity:1 }}
+              transition={{ duration:0.5, ease:[0.4,0,0.2,1] }}>
+              <svg viewBox={`0 0 ${W+2} ${H*0.58}`} style={{ width:'100%', height:'100%', display:'block' }}>
+                <defs>
+                  <linearGradient id="flapGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#3d1a00"/>
+                    <stop offset="100%" stopColor="#1a0800"/>
+                  </linearGradient>
+                </defs>
+                <polygon points={`0,0 ${W+2},0 ${(W+2)/2},${H*0.58}`} fill="url(#flapGrad)" stroke="rgba(211,166,37,0.5)" strokeWidth="2"/>
+              </svg>
+            </motion.div>
+
+            {/* Wax seal on flap */}
+            <motion.div style={{ position:'absolute', top:H*0.2, left:'50%', transform:'translateX(-50%)', zIndex:10 }}
+              animate={env==='cracking' ? { scale:[1,1.3,0.3], rotate:[0,15,-20], opacity:[1,1,0] } :
+                       env==='opening'||env==='risen' ? { scale:0, opacity:0 } : { scale:1, opacity:1 }}
+              transition={{ duration:0.5 }}>
+              <WaxSeal size={52}/>
+            </motion.div>
+          </div>
+
+          {/* Tap hint */}
+          <AnimatePresence>
+            {env==='sealed' && (
+              <motion.div initial={{ opacity:0 }} animate={{ opacity:[0.6,1,0.6] }} exit={{ opacity:0 }} transition={{ duration:1.5, repeat:Infinity }}
+                style={{ position:'absolute', bottom:-28, left:'50%', transform:'translateX(-50%)', fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:14, color:'rgba(211,166,37,0.8)', whiteSpace:'nowrap', textAlign:'center' }}>
+                👆 Tap the seal to open your letter!
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Seal shattering particles */}
+        <AnimatePresence>
+          {particles && (
+            <div style={{ position:'absolute', top:'50%', left:'50%', pointerEvents:'none', zIndex:50 }}>
+              {SEAL_SPARKS.map((p,i) => {
+                const rad = p.angle * Math.PI / 180;
+                return (
+                  <motion.div key={i}
+                    style={{ position:'absolute', width:p.size, height:p.size, borderRadius:p.size>7?'50%':2, background:p.color, top:0, left:0, boxShadow:`0 0 ${p.size}px ${p.color}` }}
+                    initial={{ x:0, y:0, opacity:1, scale:1 }}
+                    animate={{ x:Math.cos(rad)*p.dist*1.8, y:Math.sin(rad)*p.dist*1.8, opacity:0, scale:0 }}
+                    exit={{}}
+                    transition={{ duration:p.dur, ease:'easeOut' }}/>
+                );
+              })}
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* "Letter opened" prompt */}
+        <AnimatePresence>
+          {env==='risen' && (
+            <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.4 }}
+              style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', color:'#f0c75e', fontSize:16, textAlign:'center' }}>
+              ✨ Your letter from Hogwarts awaits... ✨
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN ───────────────────────────────────────────────────────
 type Spell = 'patronus'|'incendio'|'hearts'|'confetti'|null;
 
 export default function App() {
+  const [showEnvelope, setShowEnvelope] = useState(true);
   const [step, setStep]             = useState(0);
   const [owlTapped, setOwlTapped]   = useState(false);
   const [spell, setSpell]           = useState<Spell>(null);
@@ -522,6 +682,17 @@ export default function App() {
 
   return (
     <div style={{ position:'fixed', inset:0 }}>
+
+      {/* Envelope intro — shown before everything else */}
+      <AnimatePresence>
+        {showEnvelope && (
+          <motion.div key="envelope" style={{ position:'absolute', inset:0, zIndex:100 }}
+            exit={{ opacity:0, scale:1.08 }} transition={{ duration:0.8, ease:[0.4,0,0.2,1] }}>
+            <EnvelopeScene onDone={()=>setShowEnvelope(false)}/>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Night/>
       <GoldenSnitch/>
 
@@ -828,7 +999,7 @@ export default function App() {
                 </Parchment>
               </motion.div>
               <motion.button whileTap={{ scale:0.95 }}
-                onClick={()=>{ setStep(0); setOwlTapped(false); setSpell(null); setQuizQ(0); setVotes({G:0,R:0,H:0,S:0}); setHouse(null); setQuizDone(false); setLitCandles([...Array(CANDLE_COUNT).keys()]); setAllOut(false); setWish(''); }}
+                onClick={()=>{ setStep(0); setOwlTapped(false); setSpell(null); setQuizQ(0); setVotes({G:0,R:0,H:0,S:0}); setHouse(null); setQuizDone(false); setLitCandles([...Array(CANDLE_COUNT).keys()]); setAllOut(false); setWish(''); setShowEnvelope(true); }}
                 style={{ ...BTN_STYLES.ghost, minHeight:50, borderRadius:4, fontFamily:'Cinzel,serif', fontSize:14, textTransform:'uppercase', letterSpacing:'0.08em', padding:'12px 32px', cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
                 ↩ Watch Again
               </motion.button>
