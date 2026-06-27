@@ -1073,6 +1073,198 @@ function ChocolateFrog({ onCatch }: { onCatch: () => void }) {
   );
 }
 
+// Highlighted word component for letter effects
+function Hl({ children, color, glow, shimmer, bold, big }: {
+  children: React.ReactNode; color: string;
+  glow?: boolean; shimmer?: boolean; bold?: boolean; big?: boolean;
+}) {
+  const anim = shimmer
+    ? { opacity:[1,0.7,1], textShadow:[`0 0 8px ${color}44`,`0 0 22px ${color}aa`,`0 0 8px ${color}44`] }
+    : glow
+    ? { textShadow:[`0 0 10px ${color}44`,`0 0 24px ${color}99`,`0 0 10px ${color}44`] }
+    : undefined;
+  return (
+    <motion.span animate={anim} transition={anim ? { duration:2.5, repeat:Infinity, ease:'easeInOut' } : undefined}
+      style={{ color, fontWeight:bold?700:'inherit', fontSize:big?'1.15em':'inherit', display:'inline' }}>
+      {children}
+    </motion.span>
+  );
+}
+
+// Letter step with auto-scroll and text effects
+function LetterStep({ onDone }: { onDone: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rafRef    = useRef<number>(0);
+  const pausedRef = useRef(false);
+  const timerRef  = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const tick = () => {
+      if (!pausedRef.current) {
+        el.scrollTop += 0.52;
+        if (el.scrollTop > 12) setScrolled(true);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    const startId = setTimeout(() => { rafRef.current = requestAnimationFrame(tick); }, 1300);
+    const pause = () => {
+      pausedRef.current = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => { pausedRef.current = false; }, 2800);
+    };
+    el.addEventListener('touchstart', pause, { passive:true });
+    el.addEventListener('mousedown', pause);
+    el.addEventListener('wheel', pause, { passive:true });
+    return () => {
+      clearTimeout(startId);
+      cancelAnimationFrame(rafRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      el.removeEventListener('touchstart', pause);
+      el.removeEventListener('mousedown', pause);
+      el.removeEventListener('wheel', pause);
+    };
+  }, []);
+
+  const P = ({ delay, children, style }: { delay:number; children:React.ReactNode; style?:React.CSSProperties }) => (
+    <motion.p initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay, duration:0.7 }}
+      style={{ margin:'0 0 0px', lineHeight:2, ...style }}>
+      {children}
+    </motion.p>
+  );
+
+  return (
+    <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'16px', maxWidth:560, width:'100%', height:'100%', overflow:'hidden' }}>
+
+      {/* Header */}
+      <motion.div initial={{ y:-16, opacity:0 }} animate={{ y:0, opacity:1 }} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
+        <HogwartsCrest size={64}/>
+        <div style={{ textAlign:'center' }}>
+          <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(7px,1.8vw,9px)', color:'rgba(212,175,55,0.5)', letterSpacing:'0.3em', textTransform:'uppercase', margin:'0 0 2px' }}>Hogwarts School of Witchcraft &amp; Wizardry</p>
+          <h2 style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(15px,4vw,21px)', color:'#d3a625', margin:0, letterSpacing:'0.05em' }}>Birthday Letter</h2>
+          <p style={{ fontFamily:'EB Garamond,serif', fontSize:12, color:'rgba(240,220,180,0.6)', margin:0, fontStyle:'italic' }}>From Dev Kumar, with love ❤️</p>
+        </div>
+      </motion.div>
+
+      {/* Scroll pane */}
+      <motion.div ref={scrollRef} initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} transition={{ delay:0.3 }}
+        style={{ flex:1, overflowY:'auto', width:'100%', maxHeight:'calc(100dvh - 190px)', background:'linear-gradient(135deg,rgba(45,20,5,0.88),rgba(20,8,2,0.93))', border:'1px solid rgba(212,175,55,0.3)', borderRadius:4, padding:'20px', WebkitOverflowScrolling:'touch', position:'relative' }}>
+
+        <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.5),transparent)' }}/>
+
+        <div style={{ fontFamily:'EB Garamond,serif', fontSize:'clamp(14px,3.8vw,18px)', color:'#f0e0c0', display:'flex', flexDirection:'column', gap:14 }}>
+
+          {/* — Greeting — */}
+          <motion.p initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}
+            style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(15px,4.5vw,22px)', color:'#d3a625', margin:0, letterSpacing:'0.04em' }}>
+            <Hl color="#f0c75e" glow>⚡</Hl> Dear <Hl color="#f0c75e" glow bold>Rashi</Hl>,
+          </motion.p>
+
+          {/* — Body paras — */}
+          <P delay={0.5}>
+            The Headmistress of Hogwarts School of Witchcraft and Wizardry is delighted to inform you — today is your most <Hl color="#ce93d8" shimmer>magical</Hl> birthday! ✨
+          </P>
+
+          <P delay={0.85}>
+            You are <Hl color="#f0c75e" glow bold big>11</Hl> years old today — the very age when witches and wizards receive their very first Hogwarts letter! 🦉✉️
+          </P>
+
+          <P delay={1.15}>
+            We have watched you from afar, and we are certain: there is <Hl color="#ce93d8" shimmer>extraordinary magic</Hl> within you. The kind that makes every room brighter, every moment more joyful, and every heart warmer.
+          </P>
+
+          {/* — Decorative divider — */}
+          <motion.div initial={{ scaleX:0, opacity:0 }} animate={{ scaleX:1, opacity:1 }} transition={{ delay:1.4, duration:0.7 }}
+            style={{ textAlign:'center', color:'rgba(212,175,55,0.38)', fontSize:12, letterSpacing:'0.5em', userSelect:'none' }}>
+            ✦ ✦ ✦
+          </motion.div>
+
+          {/* — Houses — */}
+          <P delay={1.5}>
+            You have the courage of <Hl color="#c84b31" bold>Gryffindor</Hl> 🦁, the wisdom of <Hl color="#5b9bd5" bold>Ravenclaw</Hl> 🦅, the kindness of <Hl color="#f0c75e" bold>Hufflepuff</Hl> 🦡, and the determination of <Hl color="#4caf50" bold>Slytherin</Hl> 🐍 — you are truly <Hl color="#f0c75e" shimmer>one of a kind</Hl>. 🌟
+          </P>
+
+          <P delay={1.85}>
+            This year, may you discover new adventures, make wonderful memories, find <Hl color="#ce93d8" shimmer>magic in every ordinary day</Hl>, and know that you are loved more than all the stars in the wizarding sky. 💫
+          </P>
+
+          <P delay={2.1} style={{ fontStyle:'italic' }}>
+            Keep being your wonderful, <Hl color="#ce93d8" shimmer>magical</Hl> self. ✨
+          </P>
+
+          {/* — Decorative divider — */}
+          <motion.div initial={{ scaleX:0, opacity:0 }} animate={{ scaleX:1, opacity:1 }} transition={{ delay:2.3, duration:0.7 }}
+            style={{ textAlign:'center', color:'rgba(212,175,55,0.38)', fontSize:12, letterSpacing:'0.5em', userSelect:'none' }}>
+            ✦ ✦ ✦
+          </motion.div>
+
+          {/* — Big birthday line — */}
+          <motion.div initial={{ opacity:0, scale:0.82 }} animate={{ opacity:1, scale:1 }} transition={{ delay:2.5, type:'spring', bounce:0.4 }}
+            style={{ textAlign:'center' }}>
+            <motion.p
+              animate={{ textShadow:['0 0 18px rgba(211,166,37,0.5)','0 0 42px rgba(211,166,37,0.95)','0 0 18px rgba(211,166,37,0.5)'] }}
+              transition={{ duration:2.8, repeat:Infinity, ease:'easeInOut' }}
+              style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(18px,5.5vw,28px)', fontWeight:700, color:'#d3a625', margin:0, letterSpacing:'0.06em', lineHeight:1.4 }}>
+              🎂 Happy <Hl color="#f0c75e" glow bold big>11th</Hl> Birthday!
+            </motion.p>
+            <motion.p animate={{ rotate:[-1,1,-1] }} transition={{ duration:3, repeat:Infinity, ease:'easeInOut' }}
+              style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(22px,7vw,36px)', margin:'4px 0 0', letterSpacing:'0.1em' }}>
+              ⚡ 🎉 🎂 🎉 ⚡
+            </motion.p>
+          </motion.div>
+
+          {/* — Decorative divider — */}
+          <motion.div initial={{ scaleX:0, opacity:0 }} animate={{ scaleX:1, opacity:1 }} transition={{ delay:2.8, duration:0.7 }}
+            style={{ textAlign:'center', color:'rgba(212,175,55,0.38)', fontSize:12, letterSpacing:'0.5em', userSelect:'none' }}>
+            ✦ ✦ ✦
+          </motion.div>
+
+          {/* — Signature — */}
+          <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:3.0 }} style={{ lineHeight:2 }}>
+            <p style={{ margin:'0 0 2px', fontStyle:'italic', color:'rgba(240,220,180,0.7)' }}>With all the love in the wizarding world,</p>
+            <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(16px,5vw,24px)', color:'#d3a625', margin:0, letterSpacing:'0.05em' }}>
+              <Hl color="#f0c75e" glow bold>Dev Kumar</Hl> ❤️
+            </p>
+          </motion.div>
+
+          {/* — Postscripts — */}
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:3.3 }}
+            style={{ borderTop:'1px solid rgba(212,175,55,0.18)', paddingTop:12, display:'flex', flexDirection:'column', gap:6 }}>
+            <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(12px,3vw,14px)', color:'rgba(240,220,180,0.58)', margin:0, lineHeight:1.7 }}>
+              <Hl color="rgba(212,175,55,0.7)" bold>P.S.</Hl> The Marauder's Map confirms: you are having the <Hl color="#f0c75e" bold shimmer>BEST</Hl> day ever! 🗺️
+            </p>
+            <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(12px,3vw,14px)', color:'rgba(240,220,180,0.58)', margin:0, lineHeight:1.7 }}>
+              <Hl color="rgba(212,175,55,0.7)" bold>P.P.S.</Hl> Dobby says you are the <Hl color="#ce93d8" shimmer>kindest witch</Hl> he has ever had the honour to know! 🧦
+            </p>
+          </motion.div>
+
+          <div style={{ height:32 }}/>
+        </div>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.4),transparent)' }}/>
+      </motion.div>
+
+      {/* Scroll hint */}
+      <AnimatePresence>
+        {!scrolled && (
+          <motion.div key="scrollhint" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            style={{ position:'absolute', bottom:68, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:20 }}>
+            <motion.p animate={{ y:[0,6,0] }} transition={{ duration:1.3, repeat:Infinity, ease:'easeInOut' }}
+              style={{ fontFamily:'Cinzel,serif', fontSize:10, color:'rgba(212,175,55,0.65)', letterSpacing:'0.15em', margin:0, textAlign:'center' }}>
+              scroll ↓
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.6 }} style={{ flexShrink:0 }}>
+        <HPBtn onClick={onDone} color="purple">🎂 Blow Out the Candles!</HPBtn>
+      </motion.div>
+    </div>
+  );
+}
+
 // Marauder's Map step
 function MaraudersMap({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<'typing'|'map'>('typing');
@@ -1653,28 +1845,7 @@ export default function App() {
         {step===5 && (
           <motion.div key="s5" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
             <FloatingHallCandles/>
-            <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'16px', maxWidth:560, width:'100%', height:'100%', overflow:'hidden' }}>
-              <motion.div initial={{ y:-16, opacity:0 }} animate={{ y:0, opacity:1 }}
-                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
-                <HogwartsCrest size={68}/>
-                <div style={{ textAlign:'center' }}>
-                  <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(8px,2vw,10px)', color:'rgba(212,175,55,0.55)', letterSpacing:'0.3em', textTransform:'uppercase', margin:'0 0 2px' }}>Hogwarts School of Witchcraft &amp; Wizardry</p>
-                  <h2 style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(16px,4vw,22px)', color:'#d3a625', margin:0, letterSpacing:'0.05em' }}>Birthday Letter</h2>
-                  <p style={{ fontFamily:'EB Garamond,serif', fontSize:12, color:'rgba(240,220,180,0.6)', margin:0, fontStyle:'italic' }}>From Dev Kumar, with love ❤️</p>
-                </div>
-              </motion.div>
-
-              <motion.div initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} transition={{ delay:0.3 }}
-                style={{ flex:1, overflowY:'auto', width:'100%', maxHeight:'calc(100dvh - 190px)', background:'linear-gradient(135deg,rgba(45,20,5,0.88),rgba(20,8,2,0.92))', border:'1px solid rgba(212,175,55,0.3)', borderRadius:4, padding:'20px 20px', WebkitOverflowScrolling:'touch', position:'relative' }}>
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.5),transparent)' }}/>
-                <pre style={{ fontFamily:'EB Garamond,serif', fontSize:'clamp(14px,3.8vw,19px)', color:'#f0e0c0', lineHeight:1.95, whiteSpace:'pre-wrap', wordBreak:'break-word', margin:0 }}>{LETTER_TEXT}</pre>
-                <div style={{ position:'absolute', bottom:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.4),transparent)' }}/>
-              </motion.div>
-
-              <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.6 }} style={{ flexShrink:0 }}>
-                <HPBtn onClick={()=>setStep(6)} color="purple">🎂 Blow Out the Candles!</HPBtn>
-              </motion.div>
-            </div>
+            <LetterStep onDone={() => setStep(6)}/>
             <Steps cur={5} total={TOTAL}/>
           </motion.div>
         )}
