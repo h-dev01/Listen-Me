@@ -54,6 +54,28 @@ const MAP_ROOMS = [
   { x:28, y:82, label:"Hagrid's Hut",     icon:'🌿' },
   { x:82, y:78, label:'Forbidden Forest', icon:'🌲' },
 ];
+const LIGHTNING_BG = Array.from({ length: 16 }, () => ({
+  top: Math.random() * 85 + 5, left: Math.random() * 88 + 4,
+  dur: Math.random() * 5 + 3, delay: Math.random() * 7,
+  size: Math.random() * 10 + 9, op: Math.random() * 0.22 + 0.07,
+}));
+const CHAR_WHISPERS = [
+  { char:'🦉', name:'Hedwig',        side:'right', quote:"Hoot! I've flown all the way from Hogwarts just for you, Rashi! 🎉" },
+  { char:'🧙‍♂️', name:'Dumbledore',   side:'left',  quote:"Happiness can be found even in the darkest of times — and today is the brightest! ✨" },
+  { char:'⚡', name:'Harry',         side:'left',  quote:"You're even more magical than me, Rashi! Happy Birthday! ⚡" },
+  { char:'📚', name:'Hermione',      side:'right', quote:"I've read every book in the library — none are as brilliant as you! 🌟" },
+  { char:'😄', name:'Ron',           side:'left',  quote:"Blimey! The whole Weasley family says Happy Birthday, Rashi! 🎂" },
+  { char:'🧦', name:'Dobby',         side:'left',  quote:"Dobby is SO happy for Rashi! Dobby always knew she was a great witch! ✨" },
+  { char:'🎩', name:'Sorting Hat',   side:'right', quote:"I have never sorted a witch with such extraordinary magic in all my years! 🎩" },
+  { char:'🌿', name:'Hagrid',        side:'left',  quote:"Blimey, Rashi — yer a witch! And a bloomin' brilliant one at that! 🧡" },
+];
+const DUMBLEDORE_QUOTES = [
+  "\"It does not do to dwell on dreams and forget to live.\" — Dumbledore",
+  "\"Words are, in my not-so-humble opinion, our most inexhaustible source of magic.\" — Dumbledore",
+  "\"To the well-organised mind, every day is a new birthday.\" — Dumbledore",
+  "\"It takes a great deal of bravery to stand up to our enemies... and to our friends.\" — Dumbledore",
+  "\"Differences of habit and language are nothing at all if our aims are identical.\" — Dumbledore",
+];
 const HOUSE_QUIZ = [
   { q: '⚡ Your best friend is in danger. You...', answers: [
     { text: '🦁 Charge in to help!', house: 'G' },
@@ -128,6 +150,14 @@ function Night() {
         <motion.div key={'ff'+i} style={{ position:'absolute', top:`${f.top}%`, left:`${f.left}%`, width:f.size, height:f.size, borderRadius:'50%', background:'#f0c75e', boxShadow:`0 0 ${f.size*2}px #f0c75e` }}
           animate={{ opacity:[0,0.7,0], x:[-10,10,-5,8,0], y:[-8,5,-12,3,0] }}
           transition={{ duration:f.dur, delay:f.delay, repeat:Infinity, ease:'easeInOut' }} />
+      ))}
+      {/* floating lightning bolts */}
+      {LIGHTNING_BG.map((l,i) => (
+        <motion.div key={'lb'+i} style={{ position:'absolute', top:`${l.top}%`, left:`${l.left}%`, fontSize:l.size, pointerEvents:'none', userSelect:'none' }}
+          animate={{ opacity:[0, l.op, 0], scale:[0.8,1.1,0.8], rotate:[-5,5,-5] }}
+          transition={{ duration:l.dur, delay:l.delay, repeat:Infinity, ease:'easeInOut' }}>
+          ⚡
+        </motion.div>
       ))}
     </div>
   );
@@ -634,6 +664,124 @@ function SnitchCounter({ count }: { count: number }) {
   );
 }
 
+// Hogwarts 4-house crest SVG
+function HogwartsCrest({ size=72 }: { size?: number }) {
+  const h = size * 1.18;
+  return (
+    <svg viewBox="0 0 100 118" width={size} height={h} style={{ filter:'drop-shadow(0 0 10px rgba(212,175,55,0.5))' }}>
+      <defs>
+        <clipPath id="shield-clip">
+          <path d="M50,113 C50,113 6,82 6,48 L6,10 L94,10 L94,48 C94,82 50,113 50,113 Z"/>
+        </clipPath>
+      </defs>
+      <g clipPath="url(#shield-clip)">
+        <rect x="6"  y="10" width="44" height="52" fill="#740001"/>
+        <rect x="50" y="10" width="44" height="52" fill="#0e1a40"/>
+        <rect x="6"  y="62" width="44" height="60" fill="#f0c75e"/>
+        <rect x="50" y="62" width="44" height="60" fill="#1a472a"/>
+        <rect x="48" y="10" width="4"  height="112" fill="rgba(212,175,55,0.25)"/>
+        <rect x="6"  y="60" width="88" height="4"   fill="rgba(212,175,55,0.25)"/>
+        <text x="28" y="42" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="19" fontWeight="bold" fontFamily="Georgia,serif">G</text>
+        <text x="72" y="42" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="19" fontWeight="bold" fontFamily="Georgia,serif">R</text>
+        <text x="28" y="90" textAnchor="middle" fill="rgba(0,0,0,0.7)"        fontSize="19" fontWeight="bold" fontFamily="Georgia,serif">H</text>
+        <text x="72" y="90" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="19" fontWeight="bold" fontFamily="Georgia,serif">S</text>
+        <text x="50" y="63" textAnchor="middle" fill="rgba(212,175,55,0.9)"   fontSize="13" fontFamily="serif">⚡</text>
+      </g>
+      <path d="M50,113 C50,113 6,82 6,48 L6,10 L94,10 L94,48 C94,82 50,113 50,113 Z"
+        fill="none" stroke="rgba(212,175,55,0.75)" strokeWidth="2.5"/>
+    </svg>
+  );
+}
+
+// All 4 house shield badges in a row
+function HouseShieldsRow() {
+  const shields = [
+    { key:'G', label:'G', bg:'#740001', accent:'#d3a625', text:'rgba(255,255,255,0.9)' },
+    { key:'H', label:'H', bg:'#f0c75e', accent:'#372e29', text:'rgba(0,0,0,0.8)' },
+    { key:'R', label:'R', bg:'#0e1a40', accent:'#946b2d', text:'rgba(255,255,255,0.9)' },
+    { key:'S', label:'S', bg:'#1a472a', accent:'#aaa9ad', text:'rgba(255,255,255,0.9)' },
+  ];
+  return (
+    <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
+      {shields.map((s,i) => (
+        <motion.div key={s.key} initial={{ scale:0, y:20 }} animate={{ scale:1, y:0 }} transition={{ delay:0.3+i*0.12, type:'spring' }}>
+          <svg viewBox="0 0 60 72" width={48} height={58} style={{ filter:`drop-shadow(0 2px 8px ${s.accent}66)` }}>
+            <defs><clipPath id={`sc-${s.key}`}><path d="M30,68 C30,68 4,50 4,28 L4,6 L56,6 L56,28 C56,50 30,68 30,68 Z"/></clipPath></defs>
+            <g clipPath={`url(#sc-${s.key})`}>
+              <rect x="4" y="6" width="52" height="62" fill={s.bg}/>
+              <text x="30" y="42" textAnchor="middle" fill={s.text} fontSize="26" fontWeight="bold" fontFamily="Georgia,serif">{s.label}</text>
+            </g>
+            <path d="M30,68 C30,68 4,50 4,28 L4,6 L56,6 L56,28 C56,50 30,68 30,68 Z" fill="none" stroke={s.accent} strokeWidth="2"/>
+          </svg>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// Character speech bubble whispers
+function CharacterWhisper() {
+  const [idx, setIdx]     = useState(-1);
+  const [visible, setV]   = useState(false);
+
+  useEffect(() => {
+    function show() {
+      setIdx(Math.floor(Math.random() * CHAR_WHISPERS.length));
+      setV(true);
+      setTimeout(() => setV(false), 5000);
+    }
+    const t  = setTimeout(show, 7000);
+    const iv = setInterval(show, 16000);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, []);
+
+  if (idx < 0) return null;
+  const w = CHAR_WHISPERS[idx];
+  const isLeft = w.side === 'left';
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div key={idx}
+          initial={{ opacity:0, x: isLeft ? -30 : 30, y:10 }}
+          animate={{ opacity:1, x:0, y:0 }}
+          exit={{ opacity:0, x: isLeft ? -20 : 20 }}
+          transition={{ type:'spring', duration:0.5 }}
+          style={{ position:'fixed', bottom:80, [isLeft?'left':'right']:12, zIndex:160, display:'flex', flexDirection:'column', alignItems: isLeft ? 'flex-start' : 'flex-end', gap:4, maxWidth:220, pointerEvents:'none' }}>
+          {/* Bubble */}
+          <div style={{ background:'rgba(18,8,2,0.9)', border:'1px solid rgba(212,175,55,0.5)', borderRadius:10, padding:'9px 13px', boxShadow:'0 4px 20px rgba(0,0,0,0.6)', backdropFilter:'blur(4px)' }}>
+            <p style={{ fontFamily:'EB Garamond,serif', fontSize:12, color:'#f0e0c0', margin:'0 0 4px', lineHeight:1.5, fontStyle:'italic' }}>"{w.quote}"</p>
+            <p style={{ fontFamily:'Cinzel,serif', fontSize:9, color:'rgba(212,175,55,0.75)', margin:0, letterSpacing:'0.06em' }}>— {w.name}</p>
+          </div>
+          {/* Avatar */}
+          <div style={{ fontSize:26, lineHeight:1, marginLeft: isLeft ? 6 : 0, marginRight: isLeft ? 0 : 6 }}>{w.char}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// Rotating Dumbledore corner quote
+function DumbledoreCornerQuote() {
+  const [qi, setQi] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setQi(q => (q+1) % DUMBLEDORE_QUOTES.length), 12000);
+    return () => clearInterval(iv);
+  }, []);
+  return (
+    <div style={{ position:'fixed', bottom:16, left:12, zIndex:108, maxWidth:200, pointerEvents:'none' }}>
+      <AnimatePresence mode="wait">
+        <motion.div key={qi}
+          initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-6 }}
+          transition={{ duration:0.6 }}
+          style={{ background:'rgba(12,5,2,0.78)', border:'1px solid rgba(212,175,55,0.3)', borderRadius:8, padding:'8px 12px', backdropFilter:'blur(3px)' }}>
+          <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:11, color:'rgba(240,220,180,0.82)', margin:0, lineHeight:1.55 }}>{DUMBLEDORE_QUOTES[qi]}</p>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // Great Hall floating candles
 function FloatingHallCandles() {
   return (
@@ -1041,6 +1189,8 @@ export default function App() {
       <SnitchCounter count={points}/>
       <PointsToasts msgs={pointsMsgs}/>
       <ChocolateFrog onCatch={()=>earnPoints(50)}/>
+      <CharacterWhisper/>
+      <DumbledoreCornerQuote/>
 
       {/* Envelope intro — shown before everything else */}
       <AnimatePresence>
@@ -1195,9 +1345,14 @@ export default function App() {
                   <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(26px,8vw,44px)', fontWeight:700, color:HOUSES[house].c2, textShadow:`0 0 24px ${HOUSES[house].c2}`, margin:'0 0 8px' }}>{HOUSES[house].name}!</p>
                   <p style={{ fontFamily:'EB Garamond,serif', fontSize:15, color:'rgba(240,220,180,0.9)', margin:0, fontStyle:'italic' }}>House trait: {HOUSES[house].trait}</p>
                 </motion.div>
+                <HouseShieldsRow/>
                 <Parchment style={{ width:'100%', textAlign:'center' }}>
                   <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', color:'#e8d5a0', fontSize:'clamp(14px,3.5vw,18px)', margin:0, lineHeight:1.6 }}>
                     {HOUSES[house].desc} {HOUSES[house].badge}
+                  </p>
+                  <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:13, color:'rgba(240,220,180,0.65)', margin:'10px 0 0', lineHeight:1.6 }}>
+                    "It is our choices, Rashi, that show what we truly are.<br/>And you have chosen wonderfully!" ⭐<br/>
+                    <span style={{ fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'0.06em' }}>— Albus Dumbledore</span>
                   </p>
                 </Parchment>
                 <HPBtn onClick={()=>setStep(3)} color="gold">🗺️ The Marauder's Map!</HPBtn>
@@ -1261,13 +1416,13 @@ export default function App() {
             <FloatingHallCandles/>
             <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'16px', maxWidth:560, width:'100%', height:'100%', overflow:'hidden' }}>
               <motion.div initial={{ y:-16, opacity:0 }} animate={{ y:0, opacity:1 }}
-                style={{ display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-                <WaxSeal size={42}/>
-                <div>
-                  <h2 style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(18px,5vw,26px)', color:'#d3a625', margin:0, letterSpacing:'0.05em' }}>Birthday Letter</h2>
-                  <p style={{ fontFamily:'EB Garamond,serif', fontSize:13, color:'rgba(240,220,180,0.6)', margin:0, fontStyle:'italic' }}>From Dev Kumar, with love</p>
+                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
+                <HogwartsCrest size={68}/>
+                <div style={{ textAlign:'center' }}>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(8px,2vw,10px)', color:'rgba(212,175,55,0.55)', letterSpacing:'0.3em', textTransform:'uppercase', margin:'0 0 2px' }}>Hogwarts School of Witchcraft &amp; Wizardry</p>
+                  <h2 style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(16px,4vw,22px)', color:'#d3a625', margin:0, letterSpacing:'0.05em' }}>Birthday Letter</h2>
+                  <p style={{ fontFamily:'EB Garamond,serif', fontSize:12, color:'rgba(240,220,180,0.6)', margin:0, fontStyle:'italic' }}>From Dev Kumar, with love ❤️</p>
                 </div>
-                <WaxSeal size={42}/>
               </motion.div>
 
               <motion.div initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} transition={{ delay:0.3 }}
