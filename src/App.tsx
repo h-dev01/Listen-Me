@@ -33,6 +33,27 @@ const INCENDIO = Array.from({ length: 35 }, () => ({
 const GOLDEN_SNITCH_POS = Array.from({ length: 3 }, () => ({
   startX: Math.random() * 60 + 10, startY: Math.random() * 60 + 10, delay: Math.random() * 6, dur: 8,
 }));
+const HALL_CANDLES = Array.from({ length: 38 }, () => ({
+  left: Math.random() * 96 + 2,
+  top: Math.random() * 65 + 5,
+  dur: Math.random() * 3 + 2.5,
+  delay: Math.random() * 5,
+  h: Math.random() * 28 + 16,
+}));
+const MARAUDERS_FOOTSTEPS = [
+  { x:18, y:72, delay:0 }, { x:24, y:65, delay:0.35 }, { x:31, y:59, delay:0.7 },
+  { x:38, y:53, delay:1.05 }, { x:46, y:48, delay:1.4 }, { x:54, y:42, delay:1.75 },
+  { x:61, y:36, delay:2.1 }, { x:68, y:30, delay:2.45 }, { x:75, y:24, delay:2.8 },
+];
+const MAP_ROOMS = [
+  { x:7,  y:10, label:'Great Hall',       icon:'🏰' },
+  { x:62, y:7,  label:'Library',          icon:'📚' },
+  { x:82, y:22, label:'Owlery',           icon:'🦉' },
+  { x:14, y:38, label:'Potions',          icon:'⚗️' },
+  { x:73, y:58, label:'Quidditch Pitch',  icon:'🧹' },
+  { x:28, y:82, label:"Hagrid's Hut",     icon:'🌿' },
+  { x:82, y:78, label:'Forbidden Forest', icon:'🌲' },
+];
 const HOUSE_QUIZ = [
   { q: '⚡ Your best friend is in danger. You...', answers: [
     { text: '🦁 Charge in to help!', house: 'G' },
@@ -613,6 +634,167 @@ function SnitchCounter({ count }: { count: number }) {
   );
 }
 
+// Great Hall floating candles
+function FloatingHallCandles() {
+  return (
+    <div style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:1 }}>
+      {HALL_CANDLES.map((c,i) => (
+        <motion.div key={i}
+          style={{ position:'absolute', left:`${c.left}%`, top:`${c.top}%`, display:'flex', flexDirection:'column', alignItems:'center' }}
+          animate={{ y:[0,-10,0] }} transition={{ repeat:Infinity, duration:c.dur, delay:c.delay, ease:'easeInOut' }}>
+          <div style={{ width:3, height:8, background:'radial-gradient(ellipse at 50% 80%, #fffbe0 0%, #ffd700 55%, #ff8c00 100%)', borderRadius:'50% 50% 30% 30%', boxShadow:'0 0 6px 3px rgba(255,200,50,0.85), 0 0 14px rgba(255,140,0,0.5)' }}/>
+          <div style={{ width:3, height:c.h, background:'linear-gradient(180deg,#f5f0e8,#d4c9a8,#c4b090)', borderRadius:'1px 1px 2px 2px' }}/>
+          <div style={{ width:6, height:2, background:'rgba(160,120,60,0.35)', borderRadius:'50%', marginTop:1 }}/>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// Chocolate Frog — randomly hops across the screen!
+function ChocolateFrog({ onCatch }: { onCatch: () => void }) {
+  const [visible, setVisible] = useState(false);
+  const [caught, setCaught]   = useState(false);
+  const [pos, setPos]         = useState({ x:20, y:40 });
+
+  useEffect(() => {
+    function spawnFrog() {
+      setPos({ x: Math.random() * 65 + 8, y: Math.random() * 45 + 25 });
+      setCaught(false);
+      setVisible(true);
+      setTimeout(() => setVisible(false), 5500);
+    }
+    const t  = setTimeout(spawnFrog, 9000);
+    const iv = setInterval(spawnFrog, 24000);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div key="frog"
+          initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0, opacity:0 }}
+          style={{ position:'fixed', left:`${pos.x}%`, top:`${pos.y}%`, zIndex:200, cursor:'pointer', userSelect:'none', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}
+          onClick={() => { if (!caught) { setCaught(true); onCatch(); setTimeout(() => setVisible(false), 600); } }}>
+          {caught ? (
+            <motion.div animate={{ scale:[1,2.5,0], opacity:[1,1,0] }} transition={{ duration:0.55 }} style={{ fontSize:32 }}>✨</motion.div>
+          ) : (
+            <motion.div animate={{ x:[0,20,5,25,10,0], y:[0,-22,0,-16,0,-10,0] }} transition={{ duration:1.9, repeat:Infinity, ease:'easeInOut' }}
+              style={{ position:'relative' }}>
+              <div style={{ fontSize:40 }}>🐸</div>
+              <motion.div animate={{ opacity:[0,1,0] }} transition={{ duration:1.3, repeat:Infinity }}
+                style={{ position:'absolute', bottom:-20, left:'50%', transform:'translateX(-50%)', background:'rgba(20,10,0,0.8)', color:'#d3a625', fontFamily:'Cinzel,serif', fontSize:8, padding:'2px 7px', borderRadius:3, whiteSpace:'nowrap', border:'1px solid rgba(211,166,37,0.45)', letterSpacing:'0.05em' }}>
+                🍫 Catch me!
+              </motion.div>
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// Marauder's Map step
+function MaraudersMap({ onDone }: { onDone: () => void }) {
+  const [phase, setPhase] = useState<'typing'|'map'>('typing');
+  const [typed, setTyped] = useState('');
+  const OATH = 'I solemnly swear that I am up to no good...';
+
+  useEffect(() => {
+    if (phase !== 'typing') return;
+    let i = 0;
+    const iv = setInterval(() => {
+      i++;
+      setTyped(OATH.slice(0, i));
+      if (i >= OATH.length) { clearInterval(iv); setTimeout(() => setPhase('map'), 700); }
+    }, 46);
+    return () => clearInterval(iv);
+  }, [phase]);
+
+  return (
+    <div style={{ position:'relative', width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px 20px', boxSizing:'border-box' }}>
+      <Castle/>
+      <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:14, maxWidth:500, width:'100%', paddingBottom:60 }}>
+
+        <motion.h2 initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }}
+          style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(20px,5.5vw,32px)', color:'#d3a625', textAlign:'center', margin:0, letterSpacing:'0.06em', textShadow:'0 0 20px rgba(211,166,37,0.6)' }}>
+          🗺️ The Marauder's Map
+        </motion.h2>
+
+        {/* Parchment map */}
+        <motion.div initial={{ opacity:0, scale:0.92 }} animate={{ opacity:1, scale:1 }} transition={{ delay:0.3 }}
+          style={{ width:'100%', background:'linear-gradient(145deg,#f7ead0,#ede0b0,#f0d880)', border:'3px solid rgba(100,60,0,0.35)', borderRadius:6, padding:'14px 16px', position:'relative', minHeight:200, overflow:'hidden', boxShadow:'inset 0 0 40px rgba(100,50,0,0.12), 0 8px 32px rgba(0,0,0,0.55)' }}>
+
+          {/* Grid texture */}
+          {[20,40,60,80].map(y => <div key={`h${y}`} style={{ position:'absolute', left:0, right:0, top:`${y}%`, height:1, background:'rgba(100,60,0,0.07)' }}/>)}
+          {[25,50,75].map(x => <div key={`v${x}`} style={{ position:'absolute', top:0, bottom:0, left:`${x}%`, width:1, background:'rgba(100,60,0,0.07)' }}/>)}
+
+          {/* Typing oath */}
+          <p style={{ fontFamily:'EB Garamond,serif', fontSize:'clamp(13px,3.2vw,16px)', color:'rgba(74,32,0,0.88)', fontStyle:'italic', margin:'0 0 10px', lineHeight:1.5, minHeight:22 }}>
+            {typed}<span style={{ opacity: phase==='typing' ? 1 : 0, transition:'opacity 0.3s' }}>|</span>
+          </p>
+
+          {/* Room labels */}
+          <AnimatePresence>
+            {phase==='map' && MAP_ROOMS.map((r,i) => (
+              <motion.div key={r.label} initial={{ opacity:0, scale:0 }} animate={{ opacity:1, scale:1 }} transition={{ delay:i*0.13, type:'spring' }}
+                style={{ position:'absolute', left:`${r.x}%`, top:`${r.y}%`, transform:'translate(-50%,-50%)', textAlign:'center', pointerEvents:'none' }}>
+                <div style={{ fontSize:13 }}>{r.icon}</div>
+                <div style={{ fontFamily:'Cinzel,serif', fontSize:6.5, color:'rgba(74,32,0,0.65)', whiteSpace:'nowrap', letterSpacing:'0.04em', marginTop:1 }}>{r.label}</div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Footstep trail */}
+          <AnimatePresence>
+            {phase==='map' && MARAUDERS_FOOTSTEPS.map((fp,i) => (
+              <motion.div key={i} initial={{ opacity:0, scale:0 }} animate={{ opacity:0.9, scale:1 }} transition={{ delay:fp.delay+0.4 }}
+                style={{ position:'absolute', left:`${fp.x}%`, top:`${fp.y}%`, fontSize:11, pointerEvents:'none', transform:'translate(-50%,-50%)' }}>
+                👣
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Rashi pin at trail end */}
+          <AnimatePresence>
+            {phase==='map' && (
+              <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:3.4 }}
+                style={{ position:'absolute', left:'75%', top:'16%', transform:'translate(-50%,-100%)' }}>
+                <motion.div animate={{ y:[0,-5,0] }} transition={{ repeat:Infinity, duration:1.5, ease:'easeInOut' }}
+                  style={{ background:'rgba(116,0,1,0.88)', color:'#f0c75e', fontFamily:'Cinzel,serif', fontSize:8.5, padding:'3px 9px', borderRadius:3, border:'1px solid rgba(211,166,37,0.55)', whiteSpace:'nowrap', textAlign:'center', boxShadow:'0 2px 10px rgba(0,0,0,0.4)' }}>
+                  ⚡ Rashi Hassani<br/><span style={{ fontSize:7, opacity:0.8 }}>Witch Extraordinaire</span>
+                </motion.div>
+                <div style={{ width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid rgba(116,0,1,0.88)', margin:'0 auto' }}/>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Mischief Managed */}
+        <AnimatePresence>
+          {phase==='map' && (
+            <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} transition={{ delay:3.8, type:'spring' }} style={{ width:'100%' }}>
+              <Parchment style={{ textAlign:'center' }}>
+                <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(14px,3.8vw,18px)', color:'#d3a625', margin:0, letterSpacing:'0.08em' }}>Mischief Managed! ✨</p>
+                <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', color:'rgba(240,220,180,0.75)', fontSize:13, margin:'5px 0 0' }}>You know Hogwarts like a true witch! 🗝️</p>
+              </Parchment>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {phase==='map' && (
+            <motion.div initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} transition={{ delay:4.3, type:'spring' }}>
+              <HPBtn onClick={onDone} color="gold">✨ Cast Some Spells!</HPBtn>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <Steps cur={3} total={8}/>
+    </div>
+  );
+}
+
 // ── Envelope opening scene ─────────────────────────────────────
 type EnvState = 'sealed'|'cracking'|'opening'|'risen';
 
@@ -843,7 +1025,7 @@ export default function App() {
     if(next.length === 0) setTimeout(()=>setAllOut(true), 700);
   }
 
-  const TOTAL = 7;
+  const TOTAL = 8;
   const PAGE: React.CSSProperties = {
     position:'absolute', inset:0, display:'flex', flexDirection:'column',
     alignItems:'center', justifyContent:'center', overflow:'hidden',
@@ -858,6 +1040,7 @@ export default function App() {
       <LumosFlash active={lumos}/>
       <SnitchCounter count={points}/>
       <PointsToasts msgs={pointsMsgs}/>
+      <ChocolateFrog onCatch={()=>earnPoints(50)}/>
 
       {/* Envelope intro — shown before everything else */}
       <AnimatePresence>
@@ -1017,16 +1200,23 @@ export default function App() {
                     {HOUSES[house].desc} {HOUSES[house].badge}
                   </p>
                 </Parchment>
-                <HPBtn onClick={()=>setStep(3)} color="gold">✨ Cast Some Spells!</HPBtn>
+                <HPBtn onClick={()=>setStep(3)} color="gold">🗺️ The Marauder's Map!</HPBtn>
               </>)}
             </div>
             <Steps cur={2} total={TOTAL}/>
           </motion.div>
         )}
 
-        {/* ══ 3 — SPELL BOOK ══ */}
+        {/* ══ 3 — MARAUDER'S MAP ══ */}
         {step===3 && (
           <motion.div key="s3" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
+            <MaraudersMap onDone={()=>setStep(4)}/>
+          </motion.div>
+        )}
+
+        {/* ══ 4 — SPELL BOOK ══ */}
+        {step===4 && (
+          <motion.div key="s4" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
             <Castle/>
             <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'16px 20px', maxWidth:480, width:'100%', paddingBottom:60 }}>
               <motion.div initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }} style={{ textAlign:'center' }}>
@@ -1059,15 +1249,16 @@ export default function App() {
                 <Ron blush={spell==='hearts'}/>
               </div>
 
-              <HPBtn onClick={()=>setStep(4)} color="gold">📜 Read Your Birthday Letter</HPBtn>
+              <HPBtn onClick={()=>setStep(5)} color="gold">📜 Read Your Birthday Letter</HPBtn>
             </div>
-            <Steps cur={3} total={TOTAL}/>
+            <Steps cur={4} total={TOTAL}/>
           </motion.div>
         )}
 
-        {/* ══ 4 — LETTER ══ */}
-        {step===4 && (
-          <motion.div key="s4" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
+        {/* ══ 5 — LETTER ══ */}
+        {step===5 && (
+          <motion.div key="s5" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
+            <FloatingHallCandles/>
             <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'16px', maxWidth:560, width:'100%', height:'100%', overflow:'hidden' }}>
               <motion.div initial={{ y:-16, opacity:0 }} animate={{ y:0, opacity:1 }}
                 style={{ display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
@@ -1087,16 +1278,16 @@ export default function App() {
               </motion.div>
 
               <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.6 }} style={{ flexShrink:0 }}>
-                <HPBtn onClick={()=>setStep(5)} color="purple">🎂 Blow Out the Candles!</HPBtn>
+                <HPBtn onClick={()=>setStep(6)} color="purple">🎂 Blow Out the Candles!</HPBtn>
               </motion.div>
             </div>
-            <Steps cur={4} total={TOTAL}/>
+            <Steps cur={5} total={TOTAL}/>
           </motion.div>
         )}
 
-        {/* ══ 5 — CAKE ══ */}
-        {step===5 && (
-          <motion.div key="s5" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
+        {/* ══ 6 — CAKE ══ */}
+        {step===6 && (
+          <motion.div key="s6" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
             <Castle/>
             <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'16px 20px', maxWidth:480, width:'100%', paddingBottom:60 }}>
               {!allOut ? (<>
@@ -1129,16 +1320,16 @@ export default function App() {
                 </Parchment>
                 <input type="text" placeholder="My secret wish... 🌙" value={wish} onChange={e=>setWish(e.target.value)}
                   style={{ width:'100%', maxWidth:360, padding:'16px 20px', borderRadius:4, border:'1px solid rgba(212,175,55,0.5)', background:'rgba(40,18,5,0.85)', color:'#f0e0c0', fontFamily:'EB Garamond,serif', fontSize:17, outline:'none', boxSizing:'border-box', textAlign:'center' }}/>
-                <HPBtn onClick={()=>setStep(6)} color="gold">⭐ Send My Wish to the Stars!</HPBtn>
+                <HPBtn onClick={()=>setStep(7)} color="gold">⭐ Send My Wish to the Stars!</HPBtn>
               </>)}
             </div>
-            <Steps cur={5} total={TOTAL}/>
+            <Steps cur={6} total={TOTAL}/>
           </motion.div>
         )}
 
-        {/* ══ 6 — FINALE ══ */}
-        {step===6 && (
-          <motion.div key="s6" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.6 }}>
+        {/* ══ 7 — FINALE ══ */}
+        {step===7 && (
+          <motion.div key="s7" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.6 }}>
             <ConfettiRain/>
             <HeartsEffect/>
             <Castle/>
