@@ -54,6 +54,25 @@ const MAP_ROOMS = [
   { x:28, y:82, label:"Hagrid's Hut",     icon:'🌿' },
   { x:82, y:78, label:'Forbidden Forest', icon:'🌲' },
 ];
+const MAP_EGGS: Record<string,string> = {
+  'Great Hall':        '🍮 Dobby set the finest table in the Great Hall — every dish is Rashi\'s favourite!',
+  'Library':           '📚 Hermione placed a "RESERVED for R. Hassani — Witch Extraordinaire" sign on your seat!',
+  'Owlery':            '🦉 Hedwig prepared 11 birthday letters — one for every magical year you\'ve lived!',
+  'Potions':           '⚗️ Prof. Snape\'s note: "Miss Hassani\'s potential exceeds even my own at her age."',
+  'Quidditch Pitch':   '🧹 The entire Gryffindor team voted Rashi the greatest Seeker Hogwarts has ever seen!',
+  "Hagrid's Hut":      '🌿 Hagrid baked a birthday rock cake shaped like a golden lightning bolt — just for you!',
+  'Forbidden Forest':  '🌲 The centaurs read the stars: your future is the most extraordinary they\'ve ever seen! ⭐',
+};
+const BIRTHDAY_POEM = [
+  'In every spellbook ever written, every charm ever cast,',
+  'No magic comes close to the joy you\'ve amassed.',
+  'Eleven candles burning — each one bright as a star,',
+  'The wizarding world glows warmer because of who you are.',
+  '',
+  'May your wand spark with joy and your laughter ring true,',
+  'And every birthday wish you\'ve ever whispered come through.',
+  'Happy Birthday, Rashi — you wonderful, magical soul. ✨',
+];
 const LIGHTNING_BG = Array.from({ length: 16 }, () => ({
   top: Math.random() * 85 + 5, left: Math.random() * 88 + 4,
   dur: Math.random() * 5 + 3, delay: Math.random() * 7,
@@ -782,6 +801,48 @@ function DumbledoreCornerQuote() {
   );
 }
 
+// Fireworks burst particles
+function FireworkBurst({ x, y, hue }: { x:number; y:number; hue:number }) {
+  const pts = useRef(Array.from({ length:14 }, (_,i) => ({
+    angle:(i/14)*360 + Math.random()*12, dist:Math.random()*100+45,
+    size:Math.random()*5+3, dur:Math.random()*0.4+0.9,
+  }))).current;
+  return (
+    <div style={{ position:'absolute', left:`${x}%`, top:`${y}%`, pointerEvents:'none' }}>
+      {pts.map((p,i) => {
+        const rad = p.angle * Math.PI / 180;
+        const color = `hsl(${(hue+i*22)%360},95%,65%)`;
+        return (
+          <motion.div key={i}
+            initial={{ x:0, y:0, opacity:1, scale:1 }}
+            animate={{ x:Math.cos(rad)*p.dist, y:Math.sin(rad)*p.dist, opacity:0, scale:0.2 }}
+            transition={{ duration:p.dur, ease:'easeOut' }}
+            style={{ position:'absolute', width:p.size, height:p.size, borderRadius:'50%', background:color, boxShadow:`0 0 ${p.size*2.5}px ${color}`, transform:'translate(-50%,-50%)' }}/>
+        );
+      })}
+    </div>
+  );
+}
+function Fireworks() {
+  const [bursts, setBursts] = useState<{id:number;x:number;y:number;hue:number}[]>([]);
+  const counter = useRef(0);
+  useEffect(() => {
+    const fire = () => {
+      const id = counter.current++;
+      setBursts(b => [...b.slice(-10), { id, x:Math.random()*76+12, y:Math.random()*58+5, hue:Math.floor(Math.random()*360) }]);
+      setTimeout(() => setBursts(b => b.filter(p=>p.id!==id)), 1600);
+    };
+    fire(); fire(); fire();
+    const iv = setInterval(fire, 550);
+    return () => clearInterval(iv);
+  }, []);
+  return (
+    <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:5, overflow:'hidden' }}>
+      <AnimatePresence>{bursts.map(b => <FireworkBurst key={b.id} x={b.x} y={b.y} hue={b.hue}/>)}</AnimatePresence>
+    </div>
+  );
+}
+
 // Great Hall floating candles
 function FloatingHallCandles() {
   return (
@@ -846,7 +907,15 @@ function ChocolateFrog({ onCatch }: { onCatch: () => void }) {
 function MaraudersMap({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<'typing'|'map'>('typing');
   const [typed, setTyped] = useState('');
+  const [roomMsg, setRoomMsg] = useState<string|null>(null);
+  const eggTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const OATH = 'I solemnly swear that I am up to no good...';
+
+  function tapRoom(label: string) {
+    if (eggTimer.current) clearTimeout(eggTimer.current);
+    setRoomMsg(MAP_EGGS[label] ?? null);
+    eggTimer.current = setTimeout(() => setRoomMsg(null), 4000);
+  }
 
   useEffect(() => {
     if (phase !== 'typing') return;
@@ -882,15 +951,28 @@ function MaraudersMap({ onDone }: { onDone: () => void }) {
             {typed}<span style={{ opacity: phase==='typing' ? 1 : 0, transition:'opacity 0.3s' }}>|</span>
           </p>
 
-          {/* Room labels */}
+          {/* Room labels — tap for Easter eggs! */}
           <AnimatePresence>
             {phase==='map' && MAP_ROOMS.map((r,i) => (
               <motion.div key={r.label} initial={{ opacity:0, scale:0 }} animate={{ opacity:1, scale:1 }} transition={{ delay:i*0.13, type:'spring' }}
-                style={{ position:'absolute', left:`${r.x}%`, top:`${r.y}%`, transform:'translate(-50%,-50%)', textAlign:'center', pointerEvents:'none' }}>
-                <div style={{ fontSize:13 }}>{r.icon}</div>
-                <div style={{ fontFamily:'Cinzel,serif', fontSize:6.5, color:'rgba(74,32,0,0.65)', whiteSpace:'nowrap', letterSpacing:'0.04em', marginTop:1 }}>{r.label}</div>
+                onClick={() => tapRoom(r.label)}
+                style={{ position:'absolute', left:`${r.x}%`, top:`${r.y}%`, transform:'translate(-50%,-50%)', textAlign:'center', cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
+                <motion.div whileTap={{ scale:1.4 }} whileHover={{ scale:1.15 }}>
+                  <div style={{ fontSize:16, filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }}>{r.icon}</div>
+                  <div style={{ fontFamily:'Cinzel,serif', fontSize:7, color:'rgba(74,32,0,0.75)', whiteSpace:'nowrap', letterSpacing:'0.04em', marginTop:1, textDecoration:'underline dotted rgba(116,0,1,0.4)' }}>{r.label}</div>
+                </motion.div>
               </motion.div>
             ))}
+          </AnimatePresence>
+
+          {/* Easter egg popup */}
+          <AnimatePresence>
+            {roomMsg && (
+              <motion.div key="egg" initial={{ opacity:0, y:10, scale:0.88 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:6, scale:0.9 }} transition={{ type:'spring', duration:0.4 }}
+                style={{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', background:'rgba(116,0,1,0.93)', color:'#f0c75e', fontFamily:'EB Garamond,serif', fontSize:12, padding:'9px 15px', borderRadius:5, border:'1px solid rgba(211,166,37,0.6)', maxWidth:'92%', textAlign:'center', boxShadow:'0 6px 24px rgba(0,0,0,0.6)', zIndex:20, lineHeight:1.6, pointerEvents:'none' }}>
+                {roomMsg}
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {/* Footstep trail */}
@@ -1304,7 +1386,22 @@ export default function App() {
                   </motion.div>
                 ))}
               </div>
-              <HPBtn onClick={()=>setStep(2)} color="red">🎩 Try the Sorting Hat!</HPBtn>
+              {/* Wand reveal card */}
+              <motion.div initial={{ opacity:0, y:20, scale:0.92 }} animate={{ opacity:1, y:0, scale:1 }} transition={{ delay:1.9, type:'spring' }} style={{ width:'100%' }}>
+                <Parchment style={{ textAlign:'center', background:'linear-gradient(135deg,rgba(40,15,2,0.95),rgba(20,8,2,0.98))', border:'1.5px solid rgba(212,175,55,0.5)', position:'relative', overflow:'hidden' }}>
+                  <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 20%,rgba(212,175,55,0.08),transparent 70%)', pointerEvents:'none' }}/>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:10, color:'rgba(212,175,55,0.65)', margin:'0 0 5px', letterSpacing:'0.22em', textTransform:'uppercase' }}>✨ Your Wand Has Been Chosen ✨</p>
+                  <p style={{ fontFamily:'EB Garamond,serif', fontSize:18, color:'#f0c75e', margin:'0 0 4px', fontWeight:'bold', letterSpacing:'0.04em' }}>🪄 Vine Wood · Dragon Heartstring</p>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:10, color:'rgba(212,175,55,0.6)', margin:'0 0 6px', letterSpacing:'0.08em' }}>12 inches · Springy · Quite Powerful</p>
+                  <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:13, color:'rgba(240,220,180,0.72)', margin:0, lineHeight:1.6 }}>
+                    "Vine wands find their own witch. They choose those of great magical intelligence, hidden depths, and extraordinary creative power. This wand was always meant for you, Rashi." — Ollivanders
+                  </p>
+                </Parchment>
+              </motion.div>
+
+              <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:2.3 }}>
+                <HPBtn onClick={()=>setStep(2)} color="red">🎩 Try the Sorting Hat!</HPBtn>
+              </motion.div>
             </div>
             <Steps cur={1} total={TOTAL}/>
           </motion.div>
@@ -1485,6 +1582,7 @@ export default function App() {
         {/* ══ 7 — FINALE ══ */}
         {step===7 && (
           <motion.div key="s7" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.6 }}>
+            <Fireworks/>
             <ConfettiRain/>
             <HeartsEffect/>
             <Castle/>
@@ -1515,7 +1613,46 @@ export default function App() {
                 <FloatChar delay={0.45}><Ron blush/></FloatChar>
                 <FloatChar delay={0.6}><Dobby/></FloatChar>
               </div>
-              <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} transition={{ delay:1.1, type:'spring' }}>
+              {/* Birthday poem */}
+              <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:1.1 }}>
+                <Parchment style={{ textAlign:'center', background:'linear-gradient(135deg,rgba(40,15,2,0.95),rgba(20,8,2,0.98))', border:'1.5px solid rgba(212,175,55,0.45)', position:'relative', overflow:'hidden' }}>
+                  <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 0%,rgba(212,175,55,0.07),transparent 65%)', pointerEvents:'none' }}/>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:9, color:'rgba(212,175,55,0.55)', margin:'0 0 8px', letterSpacing:'0.2em', textTransform:'uppercase' }}>✦ A Poem for Rashi ✦</p>
+                  {BIRTHDAY_POEM.map((line,i) => (
+                    <motion.p key={i} initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:1.2 + i*0.18 }}
+                      style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(12px,3vw,14px)', color: line==='' ? 'transparent' : 'rgba(240,220,180,0.82)', margin: line==='' ? '4px 0' : '0', lineHeight:1.7 }}>
+                      {line || ' '}
+                    </motion.p>
+                  ))}
+                </Parchment>
+              </motion.div>
+
+              {/* Hogwarts Diploma */}
+              <motion.div initial={{ opacity:0, scale:0.88, y:12 }} animate={{ opacity:1, scale:1, y:0 }} transition={{ delay:1.5, type:'spring' }} style={{ width:'100%' }}>
+                <div style={{ background:'linear-gradient(145deg,#f5e6c0,#ede0a8,#f0d870)', border:'3px double rgba(120,80,0,0.5)', borderRadius:6, padding:'18px 20px', textAlign:'center', boxShadow:'inset 0 0 30px rgba(120,80,0,0.1), 0 6px 28px rgba(0,0,0,0.5)', position:'relative', overflow:'hidden' }}>
+                  <div style={{ position:'absolute', inset:6, border:'1px solid rgba(120,80,0,0.2)', borderRadius:4, pointerEvents:'none' }}/>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:9, color:'rgba(74,40,0,0.6)', margin:'0 0 6px', letterSpacing:'0.2em' }}>HOGWARTS SCHOOL OF WITCHCRAFT & WIZARDRY</p>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:11, color:'rgba(74,40,0,0.5)', margin:'0 0 8px' }}>— Diploma of Magical Achievement —</p>
+                  <p style={{ fontFamily:'EB Garamond,serif', fontSize:13, color:'rgba(74,40,0,0.7)', margin:'0 0 4px', fontStyle:'italic' }}>This certificate is proudly awarded to</p>
+                  <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(18px,5vw,26px)', color:'rgba(100,50,0,0.9)', margin:'0 0 4px', fontWeight:700, letterSpacing:'0.06em' }}>Rashi Hassani ⚡</p>
+                  <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:12, color:'rgba(74,40,0,0.65)', margin:'0 0 10px', lineHeight:1.6 }}>
+                    In recognition of completing eleven years of extraordinary magical ability,<br/>a heart of gold, and being utterly wonderful in every way.
+                  </p>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginTop:6, padding:'0 10px' }}>
+                    <div style={{ textAlign:'center' }}>
+                      <div style={{ width:90, height:1, background:'rgba(100,60,0,0.4)', marginBottom:3 }}/>
+                      <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:10, color:'rgba(74,40,0,0.55)', margin:0 }}>Albus Dumbledore<br/>Headmaster</p>
+                    </div>
+                    <div style={{ fontSize:28 }}>🪄</div>
+                    <div style={{ textAlign:'center' }}>
+                      <div style={{ width:90, height:1, background:'rgba(100,60,0,0.4)', marginBottom:3 }}/>
+                      <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:10, color:'rgba(74,40,0,0.55)', margin:0 }}>Dev Kumar<br/>With All His Love</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} transition={{ delay:2.0, type:'spring' }}>
                 <Parchment style={{ textAlign:'center' }}>
                   <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(15px,4vw,20px)', color:'#d3a625', margin:0, letterSpacing:'0.06em' }}>With all my love — Dev Kumar ❤️</p>
                 </Parchment>
