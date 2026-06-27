@@ -478,16 +478,6 @@ function Parchment({ children, style }: { children:React.ReactNode; style?:React
 // ── Creative features ──────────────────────────────────────────
 const BURST_EMOJIS = ['⚡','✨','🌟','💫','⭐','🔮','🪄','💥','🎯','🏆'];
 const HP_FLOAT_ITEMS = ['🧹','📖','🎩','⚡','🔮','🏆','🪄','🦉','🧪','🗝️','💎','🌙','🐸','🦁','🐍','🦅','🦡','🌿','🔭','🧲'];
-const PROPHET_HEADLINES = [
-  '⚡ BREAKING: Rashi Hassani Turns 11 — Hogwarts Acceptance Letter Confirmed!',
-  '🦉 OWL POST SPECIAL: Birthday Celebrations at Hogwarts Castle Tonight!',
-  '🏆 QUIDDITCH UPDATE: Rashi Named Most Magical Person of the Year!',
-  '📰 DAILY PROPHET: Dumbledore Declares Today a School Holiday for Rashi\'s Birthday!',
-  '🌟 WIZARDING WORLD: Golden Snitches Released Over Hogwarts to Celebrate!',
-  '🎂 HOGSMEADE NEWS: Honeydukes Baked 11-Layer Birthday Cake for Rashi!',
-  '⚗️ POTIONS CLASS CANCELLED: Professor Snape Too Busy Attending Birthday Party!',
-  '🦉 EXCLUSIVE: Hedwig Flew 1,000 Miles to Deliver This Special Birthday Wish!',
-];
 
 interface Spark { id: number; x: number; y: number }
 interface FloatItem { id: number; emoji: string; left: number; top: number; size: number; dur: number }
@@ -595,30 +585,6 @@ function LumosFlash({ active }: { active: boolean }) {
   );
 }
 
-// Sliding Daily Prophet ticker at the top
-function DailyProphet() {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const iv = setInterval(() => setIdx(i => (i+1) % PROPHET_HEADLINES.length), 8000);
-    return () => clearInterval(iv);
-  }, []);
-  return (
-    <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:110, background:'linear-gradient(90deg,rgba(116,0,1,0.92),rgba(90,0,0,0.92))', borderBottom:'1px solid rgba(211,166,37,0.4)', padding:'5px 12px', overflow:'hidden', display:'flex', alignItems:'center', gap:10 }}>
-      <span style={{ fontFamily:'Cinzel,serif', fontSize:10, color:'#d3a625', fontWeight:'bold', letterSpacing:'0.15em', whiteSpace:'nowrap', flexShrink:0 }}>📰 THE DAILY PROPHET</span>
-      <div style={{ width:1, height:14, background:'rgba(211,166,37,0.4)', flexShrink:0 }}/>
-      <div style={{ overflow:'hidden', flex:1 }}>
-        <AnimatePresence mode="wait">
-          <motion.p key={idx}
-            initial={{ x:80, opacity:0 }} animate={{ x:0, opacity:1 }} exit={{ x:-80, opacity:0 }}
-            transition={{ duration:0.5 }}
-            style={{ fontFamily:'EB Garamond,serif', fontSize:'clamp(10px,2.5vw,13px)', color:'rgba(248,236,200,0.95)', margin:0, fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-            {PROPHET_HEADLINES[idx]}
-          </motion.p>
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
 
 // House points notification toasts
 function PointsToasts({ msgs }: { msgs: PointMsg[] }) {
@@ -890,7 +856,6 @@ export default function App() {
       <TouchSparkles/>
       <FloatingHPItems onPop={()=>earnPoints(10)}/>
       <LumosFlash active={lumos}/>
-      <DailyProphet/>
       <SnitchCounter count={points}/>
       <PointsToasts msgs={pointsMsgs}/>
 
