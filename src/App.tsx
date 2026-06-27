@@ -73,6 +73,16 @@ const BIRTHDAY_POEM = [
   'And every birthday wish you\'ve ever whispered come through.',
   'Happy Birthday, Rashi — you wonderful, magical soul. ✨',
 ];
+const SPELL_DATA = [
+  { id:'patronus',   name:'Expecto Patronum!',  icon:'🦌', desc:'Summons a silver guardian to banish all darkness',           effect:'patronus'  as const, col:'#4fc3f7', bg:'rgba(0,70,180,0.32)', stars:5, msg:'A magnificent silver stag erupts and fills the air with light!',       dur:5000 },
+  { id:'incendio',   name:'Incendio!',           icon:'🔥', desc:'Conjures roaring magical fire from the wand tip',            effect:'incendio'  as const, col:'#ff6b35', bg:'rgba(200,40,0,0.32)',  stars:3, msg:'Brilliant crimson flames burst forth from your wand! The room roars!', dur:4000 },
+  { id:'amor',       name:'Amor Infinitum!',     icon:'💖', desc:'Fills the entire world with infinite love and warmth',       effect:'hearts'    as const, col:'#f06292', bg:'rgba(180,0,80,0.32)',  stars:4, msg:'The air shimmers with boundless love — the room is filled with warmth!',dur:5000 },
+  { id:'confetto',   name:'Confetto Maxima!',    icon:'🎊', desc:'Conjures a legendary cascade of birthday celebration magic', effect:'confetti'  as const, col:'#d3a625', bg:'rgba(160,90,0,0.32)',  stars:4, msg:'Rainbow confetti rains from the enchanted ceiling — ¡Olé!',           dur:5000 },
+  { id:'lumos',      name:'Lumos Maxima!',       icon:'☀️', desc:'Floods the entire world with blinding magical radiance',    effect:'patronus'  as const, col:'#fff176', bg:'rgba(180,160,0,0.22)', stars:2, msg:'Searing white light blazes through every shadow — darkness flees!',    dur:3000 },
+  { id:'riddikulus', name:'Riddikulus!',          icon:'😂', desc:'Transforms your deepest fear into pure hilarious comedy',   effect:'confetti'  as const, col:'#ce93d8', bg:'rgba(120,0,150,0.32)', stars:3, msg:'Snape is now wearing Neville\'s gran\'s enormous vulture hat! 😂🎩',   dur:4500 },
+  { id:'accio',      name:'Accio Birthday Joy!', icon:'⭐', desc:'Summons all the happiness in the universe straight to you',  effect:'hearts'    as const, col:'#aed581', bg:'rgba(50,120,0,0.32)',  stars:2, msg:'A whirlwind of joy and birthday magic flies straight into your heart!', dur:4000 },
+  { id:'alohomora',  name:'Alohomora!',          icon:'🗝️', desc:'Unlocks every door and every dream that lies ahead of you',  effect:'confetti'  as const, col:'#80cbc4', bg:'rgba(0,100,100,0.32)', stars:3, msg:'Every door to every dream swings open before you — go forth! 🗝️',     dur:4500 },
+] as const;
 const LIGHTNING_BG = Array.from({ length: 16 }, () => ({
   top: Math.random() * 85 + 5, left: Math.random() * 88 + 4,
   dur: Math.random() * 5 + 3, delay: Math.random() * 7,
@@ -843,6 +853,166 @@ function Fireworks() {
   );
 }
 
+// Animated wand swish across the screen
+function WandSwish({ color }: { color: string }) {
+  const sparks = [0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68];
+  return (
+    <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:60, overflow:'hidden' }}>
+      <motion.div
+        initial={{ x:'-8%', y:'72%', rotate:-22, opacity:0 }}
+        animate={{ x:'112%', y:'12%', rotate:12, opacity:[0,1,1,0.5,0] }}
+        transition={{ duration:0.58, ease:'easeOut' }}
+        style={{ position:'absolute', width:240, height:5, background:`linear-gradient(90deg,transparent,${color},white,${color})`, borderRadius:3, boxShadow:`0 0 14px ${color},0 0 32px ${color},0 0 60px ${color}55`, transformOrigin:'left center' }}/>
+      {sparks.map((t,i) => {
+        const xPct = 5 + i*14;
+        const yPct = 68 - i*9;
+        return (
+          <motion.div key={i}
+            initial={{ x:`${xPct}%`, y:`${yPct}%`, scale:0, opacity:0 }}
+            animate={{ y:`${yPct-18}%`, scale:[0,1.4,0], opacity:[0,1,0] }}
+            transition={{ delay:t, duration:0.45, ease:'easeOut' }}
+            style={{ position:'absolute', fontSize:16, color, textShadow:`0 0 10px ${color}` }}>
+            ✨
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Full interactive spell book step
+function SpellBookStep({ onDone, castSpell, spell }: {
+  onDone: () => void;
+  castSpell: (e: 'patronus'|'incendio'|'hearts'|'confetti', d: number) => void;
+  spell: string | null;
+}) {
+  const [activeCast, setActiveCast] = useState<string|null>(null);
+  const [castMsg, setCastMsg] = useState<string|null>(null);
+  const [castColor, setCastColor] = useState('#d3a625');
+  const [castIcon, setCastIcon] = useState('✨');
+  const [showWand, setShowWand] = useState(false);
+  const [done, setDone] = useState<Set<string>>(new Set());
+  const timerRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+
+  function handleCast(s: typeof SPELL_DATA[number]) {
+    if (activeCast) return;
+    setActiveCast(s.id);
+    setShowWand(true);
+    setTimeout(() => setShowWand(false), 620);
+    setTimeout(() => {
+      castSpell(s.effect, s.dur);
+      setCastMsg(s.msg);
+      setCastColor(s.col);
+      setCastIcon(s.icon);
+      setDone(prev => new Set([...prev, s.id]));
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => { setActiveCast(null); setCastMsg(null); }, s.dur + 300);
+    }, 680);
+  }
+
+  const allCast = done.size === SPELL_DATA.length;
+
+  return (
+    <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'14px 16px', maxWidth:480, width:'100%', paddingBottom:60 }}>
+
+      {showWand && <WandSwish color={castColor}/>}
+
+      {/* Book header */}
+      <motion.div initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }} style={{ textAlign:'center', width:'100%' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:2 }}>
+          <div style={{ flex:1, height:1, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.4))' }}/>
+          <h2 style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(20px,5.5vw,30px)', color:'#d3a625', margin:0, letterSpacing:'0.06em', textShadow:'0 0 20px rgba(211,166,37,0.5)' }}>📖 Spell Book</h2>
+          <div style={{ flex:1, height:1, background:'linear-gradient(90deg,rgba(212,175,55,0.4),transparent)' }}/>
+        </div>
+        <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(13px,3vw,16px)', color:'rgba(240,220,180,0.65)', margin:'0 0 4px' }}>
+          Tap a spell to cast it upon the world ✨
+        </p>
+        {/* Progress */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          {SPELL_DATA.map(s => (
+            <motion.div key={s.id}
+              animate={{ scale: done.has(s.id) ? [1,1.4,1] : 1, backgroundColor: done.has(s.id) ? s.col : 'rgba(255,255,255,0.12)' }}
+              transition={{ duration:0.4 }}
+              style={{ width:10, height:10, borderRadius:'50%', border:`1px solid ${done.has(s.id) ? s.col : 'rgba(255,255,255,0.2)'}`, boxShadow: done.has(s.id) ? `0 0 8px ${s.col}` : 'none' }}/>
+          ))}
+          <span style={{ fontFamily:'Cinzel,serif', fontSize:10, color:'rgba(212,175,55,0.6)', letterSpacing:'0.08em', marginLeft:4 }}>{done.size}/{SPELL_DATA.length}</span>
+        </div>
+      </motion.div>
+
+      {/* Spell grid — open book style */}
+      <div style={{ width:'100%', background:'linear-gradient(145deg,rgba(35,12,2,0.9),rgba(18,6,1,0.95))', border:'2px solid rgba(212,175,55,0.25)', borderRadius:8, padding:'10px', boxShadow:'inset 0 0 40px rgba(0,0,0,0.4)' }}>
+        {/* Book spine decoration */}
+        <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.3),transparent)', marginBottom:10 }}/>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {SPELL_DATA.map((s, i) => {
+            const isCasting = activeCast === s.id;
+            const isDone = done.has(s.id);
+            return (
+              <motion.button key={s.id}
+                initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.07, type:'spring' }}
+                whileTap={{ scale:0.91 }}
+                onClick={() => handleCast(s)}
+                style={{ background: isDone ? s.bg.replace('0.32','0.55') : 'rgba(25,8,1,0.7)', border:`1.5px solid ${isDone ? s.col : s.col+'44'}`, borderRadius:7, padding:'10px 8px', cursor: activeCast ? 'not-allowed' : 'pointer', textAlign:'center', transition:'all 0.35s', boxShadow: isDone ? `0 0 18px ${s.col}33, inset 0 0 12px ${s.col}11` : 'none', position:'relative', overflow:'hidden', WebkitTapHighlightColor:'transparent', opacity: activeCast && !isCasting ? 0.55 : 1 }}>
+                {/* Shimmer overlay when casting */}
+                {isCasting && (
+                  <motion.div animate={{ x:['-100%','200%'] }} transition={{ repeat:Infinity, duration:0.5, ease:'linear' }}
+                    style={{ position:'absolute', inset:0, background:`linear-gradient(90deg,transparent,${s.col}33,transparent)`, pointerEvents:'none' }}/>
+                )}
+                <div style={{ fontSize:26, marginBottom:3, filter: isDone ? `drop-shadow(0 0 6px ${s.col})` : 'none' }}>{s.icon}</div>
+                <div style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(8px,2vw,10px)', color: s.col, letterSpacing:'0.04em', marginBottom:3, lineHeight:1.3, fontWeight:isDone?700:400 }}>{s.name}</div>
+                <div style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(9px,2.2vw,11px)', color:'rgba(240,220,180,0.55)', lineHeight:1.4, marginBottom:5 }}>{s.desc}</div>
+                <div style={{ fontSize:8, letterSpacing:1, color: s.col + (isDone ? '' : '88') }}>{'⭐'.repeat(s.stars)}</div>
+                {isDone && (
+                  <motion.div initial={{ scale:0 }} animate={{ scale:1 }} transition={{ type:'spring' }}
+                    style={{ position:'absolute', top:5, right:7, fontFamily:'Cinzel,serif', fontSize:9, color:'#4caf50', fontWeight:700 }}>
+                    ✓
+                  </motion.div>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+        <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(212,175,55,0.3),transparent)', marginTop:10 }}/>
+      </div>
+
+      {/* Cast result message */}
+      <AnimatePresence>
+        {castMsg && (
+          <motion.div key="castmsg" initial={{ scale:0.7, opacity:0, y:10 }} animate={{ scale:1, opacity:1, y:0 }} exit={{ scale:0.8, opacity:0 }} transition={{ type:'spring' }}
+            style={{ width:'100%' }}>
+            <Parchment style={{ textAlign:'center', border:`1.5px solid ${castColor}66`, background:`linear-gradient(135deg,rgba(30,10,2,0.95),rgba(15,5,1,0.98))`, position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at 50% 0%,${castColor}18,transparent 65%)`, pointerEvents:'none' }}/>
+              <p style={{ fontFamily:'Cinzel,serif', fontSize:11, color:castColor, margin:'0 0 4px', letterSpacing:'0.2em' }}>{castIcon} SPELL CAST! {castIcon}</p>
+              <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(13px,3.5vw,16px)', color:'#f0e0c0', margin:0, lineHeight:1.6 }}>{castMsg}</p>
+            </Parchment>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Characters reacting */}
+      <div style={{ display:'flex', gap:16, justifyContent:'center' }}>
+        <Harry glint={spell==='patronus'}/>
+        <Hermione wand={spell!==null}/>
+        <Ron blush={spell==='hearts'}/>
+      </div>
+
+      {/* All spells cast bonus message */}
+      <AnimatePresence>
+        {allCast && (
+          <motion.div initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.8, opacity:0 }} transition={{ type:'spring' }}>
+            <Parchment style={{ textAlign:'center', border:'1.5px solid rgba(212,175,55,0.7)', background:'linear-gradient(135deg,rgba(50,25,2,0.97),rgba(20,8,1,0.99))' }}>
+              <p style={{ fontFamily:'Cinzel,serif', fontSize:13, color:'#d3a625', margin:'0 0 3px', letterSpacing:'0.12em' }}>🏆 Master Witch Achievement!</p>
+              <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:14, color:'rgba(240,220,180,0.8)', margin:0 }}>You cast all 8 spells! Even Dumbledore is impressed. ✨</p>
+            </Parchment>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <HPBtn onClick={onDone} color="gold">📜 Read Your Birthday Letter</HPBtn>
+    </div>
+  );
+}
+
 // Great Hall floating candles
 function FloatingHallCandles() {
   return (
@@ -1470,39 +1640,11 @@ export default function App() {
         {step===4 && (
           <motion.div key="s4" style={PAGE} initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.5 }}>
             <Castle/>
-            <div style={{ position:'relative', zIndex:10, display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'16px 20px', maxWidth:480, width:'100%', paddingBottom:60 }}>
-              <motion.div initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }} style={{ textAlign:'center' }}>
-                <h2 style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(22px,6vw,34px)', color:'#d3a625', margin:'0 0 4px', letterSpacing:'0.06em' }}>🪄 Spell Book</h2>
-                <p style={{ fontFamily:'EB Garamond,serif', fontSize:'clamp(14px,3.5vw,18px)', color:'rgba(240,220,180,0.7)', margin:0, fontStyle:'italic' }}>Tap a spell to cast it! ✨</p>
-              </motion.div>
-
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, width:'100%', maxWidth:400 }}>
-                <SpellBtn onClick={()=>castSpell('patronus',5000)} color="blue">🦌<br/>Expecto<br/>Patronum</SpellBtn>
-                <SpellBtn onClick={()=>castSpell('incendio',4000)} color="red">🔥<br/>Incendio</SpellBtn>
-                <SpellBtn onClick={()=>castSpell('hearts',5000)} color="purple">💖<br/>Amor<br/>Infinitum</SpellBtn>
-                <SpellBtn onClick={()=>castSpell('confetti',5000)} color="gold">🎊<br/>Confetto<br/>Maxima!</SpellBtn>
-                <SpellBtn onClick={()=>{castSpell('patronus',4000);}} color="green">⭐<br/>Lumos<br/>Solem</SpellBtn>
-                <SpellBtn onClick={()=>castSpell('confetti',4000)} color="red">🪄<br/>Wingardium<br/>Leviosa</SpellBtn>
-              </div>
-
-              <AnimatePresence>
-                {spell && (
-                  <motion.div initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0, opacity:0 }}>
-                    <Parchment style={{ textAlign:'center' }}>
-                      <p style={{ fontFamily:'Cinzel,serif', fontSize:15, color:'#f0c75e', margin:0, letterSpacing:'0.1em' }}>✨ SPELL CAST! ✨</p>
-                    </Parchment>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div style={{ display:'flex', gap:16, justifyContent:'center' }}>
-                <Harry glint={spell==='patronus'}/>
-                <Hermione wand={spell!==null}/>
-                <Ron blush={spell==='hearts'}/>
-              </div>
-
-              <HPBtn onClick={()=>setStep(5)} color="gold">📜 Read Your Birthday Letter</HPBtn>
-            </div>
+            <SpellBookStep
+              onDone={() => setStep(5)}
+              castSpell={castSpell}
+              spell={spell}
+            />
             <Steps cur={4} total={TOTAL}/>
           </motion.div>
         )}
