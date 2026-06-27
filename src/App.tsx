@@ -475,6 +475,178 @@ function Parchment({ children, style }: { children:React.ReactNode; style?:React
   );
 }
 
+// ── Creative features ──────────────────────────────────────────
+const BURST_EMOJIS = ['⚡','✨','🌟','💫','⭐','🔮','🪄','💥','🎯','🏆'];
+const HP_FLOAT_ITEMS = ['🧹','📖','🎩','⚡','🔮','🏆','🪄','🦉','🧪','🗝️','💎','🌙','🐸','🦁','🐍','🦅','🦡','🌿','🔭','🧲'];
+const PROPHET_HEADLINES = [
+  '⚡ BREAKING: Rashi Hassani Turns 11 — Hogwarts Acceptance Letter Confirmed!',
+  '🦉 OWL POST SPECIAL: Birthday Celebrations at Hogwarts Castle Tonight!',
+  '🏆 QUIDDITCH UPDATE: Rashi Named Most Magical Person of the Year!',
+  '📰 DAILY PROPHET: Dumbledore Declares Today a School Holiday for Rashi\'s Birthday!',
+  '🌟 WIZARDING WORLD: Golden Snitches Released Over Hogwarts to Celebrate!',
+  '🎂 HOGSMEADE NEWS: Honeydukes Baked 11-Layer Birthday Cake for Rashi!',
+  '⚗️ POTIONS CLASS CANCELLED: Professor Snape Too Busy Attending Birthday Party!',
+  '🦉 EXCLUSIVE: Hedwig Flew 1,000 Miles to Deliver This Special Birthday Wish!',
+];
+
+interface Spark { id: number; x: number; y: number }
+interface FloatItem { id: number; emoji: string; left: number; top: number; size: number; dur: number }
+interface PointMsg { id: number; text: string }
+
+// Burst of sparkles at a tap position
+function SparkBurst({ x, y }: { x: number; y: number }) {
+  const pts = useRef(Array.from({ length: 10 }, (_, i) => ({
+    angle: (i / 10) * 360 + Math.random() * 18,
+    dist: Math.random() * 58 + 18,
+    size: Math.random() * 14 + 10,
+    emoji: BURST_EMOJIS[Math.floor(Math.random() * BURST_EMOJIS.length)],
+    dur: Math.random() * 0.4 + 0.45,
+  }))).current;
+  return (
+    <div style={{ position:'absolute', left:x, top:y, width:0, height:0, pointerEvents:'none' }}>
+      {pts.map((p, i) => {
+        const rad = p.angle * Math.PI / 180;
+        return (
+          <motion.div key={i} style={{ position:'absolute', fontSize:p.size, transform:'translate(-50%,-50%)' }}
+            initial={{ x:0, y:0, opacity:1, scale:0 }}
+            animate={{ x:Math.cos(rad)*p.dist, y:Math.sin(rad)*p.dist, opacity:0, scale:1.2 }}
+            transition={{ duration:p.dur, ease:'easeOut' }}>
+            {p.emoji}
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Global magic touch sparkles (fires on every tap on mobile)
+function TouchSparkles() {
+  const [sparks, setSparks] = useState<Spark[]>([]);
+  const counter = useRef(0);
+  const lastT = useRef(0);
+  useEffect(() => {
+    function add(x: number, y: number) {
+      const now = Date.now();
+      if (now - lastT.current < 80) return;
+      lastT.current = now;
+      const id = counter.current++;
+      setSparks(s => [...s.slice(-14), { id, x, y }]);
+      setTimeout(() => setSparks(s => s.filter(sp => sp.id !== id)), 1100);
+    }
+    const onTouch = (e: TouchEvent) => { const t = e.touches[0]||e.changedTouches[0]; if(t) add(t.clientX, t.clientY); };
+    window.addEventListener('touchstart', onTouch, { passive: true });
+    return () => window.removeEventListener('touchstart', onTouch);
+  }, []);
+  return (
+    <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:210 }}>
+      {sparks.map(sp => <SparkBurst key={sp.id} x={sp.x} y={sp.y}/>)}
+    </div>
+  );
+}
+
+// Floating tappable HP items that drift across the screen
+function FloatingHPItems({ onPop }: { onPop: ()=>void }) {
+  const [items, setItems] = useState<FloatItem[]>([]);
+  const counter = useRef(0);
+  useEffect(() => {
+    function spawn() {
+      const id = counter.current++;
+      const dur = Math.random() * 4 + 7;
+      setItems(s => [...s.slice(-7), { id, emoji: HP_FLOAT_ITEMS[Math.floor(Math.random()*HP_FLOAT_ITEMS.length)], left: Math.random()*80+5, top: Math.random()*55+8, size: Math.random()*12+26, dur }]);
+      setTimeout(() => setItems(s => s.filter(i => i.id !== id)), (dur+1)*1000);
+    }
+    spawn();
+    const iv = setInterval(spawn, 3200);
+    return () => clearInterval(iv);
+  }, []);
+  return (
+    <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:12 }}>
+      {items.map(item => (
+        <motion.div key={item.id}
+          style={{ position:'absolute', left:`${item.left}%`, top:`${item.top}%`, fontSize:item.size, cursor:'pointer', pointerEvents:'auto', WebkitTapHighlightColor:'transparent', filter:'drop-shadow(0 0 6px rgba(211,166,37,0.5))' }}
+          initial={{ opacity:0, scale:0, rotate:-15 }}
+          animate={{ opacity:[0,0.9,0.9,0], scale:[0,1.1,1,0.8,0], y:[0,-10,-25,-45,-70], rotate:[-15,5,-5,8,0] }}
+          transition={{ duration:item.dur, ease:'easeInOut' }}
+          onClick={e=>{ e.stopPropagation(); setItems(s=>s.filter(i=>i.id!==item.id)); onPop(); }}
+          whileTap={{ scale:2.4, rotate:20 }}>
+          {item.emoji}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// SECRET: 5 rapid taps = LUMOS flash
+function LumosFlash({ active }: { active: boolean }) {
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div key="lumos" style={{ position:'fixed', inset:0, zIndex:300, pointerEvents:'none', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}
+          initial={{ opacity:0 }} animate={{ opacity:[0,1,0.85,0] }} exit={{ opacity:0 }} transition={{ duration:2.2, times:[0,0.07,0.5,1] }}>
+          <div style={{ position:'absolute', inset:0, background:'rgba(255,255,240,0.88)' }}/>
+          <motion.div style={{ position:'relative', textAlign:'center' }}
+            initial={{ scale:0 }} animate={{ scale:[0,1.4,1] }} transition={{ duration:0.4 }}>
+            <p style={{ fontFamily:'Cinzel,serif', fontSize:'clamp(36px,10vw,64px)', color:'#d3a625', textShadow:'0 0 40px #f0c75e, 0 0 80px #d3a625', margin:0, letterSpacing:'0.1em' }}>✨ LUMOS! ✨</p>
+            <p style={{ fontFamily:'EB Garamond,serif', fontStyle:'italic', fontSize:'clamp(14px,4vw,20px)', color:'rgba(74,32,0,0.8)', margin:'8px 0 0' }}>Secret spell unlocked! You're a true witch! 🪄</p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// Sliding Daily Prophet ticker at the top
+function DailyProphet() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setIdx(i => (i+1) % PROPHET_HEADLINES.length), 8000);
+    return () => clearInterval(iv);
+  }, []);
+  return (
+    <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:110, background:'linear-gradient(90deg,rgba(116,0,1,0.92),rgba(90,0,0,0.92))', borderBottom:'1px solid rgba(211,166,37,0.4)', padding:'5px 12px', overflow:'hidden', display:'flex', alignItems:'center', gap:10 }}>
+      <span style={{ fontFamily:'Cinzel,serif', fontSize:10, color:'#d3a625', fontWeight:'bold', letterSpacing:'0.15em', whiteSpace:'nowrap', flexShrink:0 }}>📰 THE DAILY PROPHET</span>
+      <div style={{ width:1, height:14, background:'rgba(211,166,37,0.4)', flexShrink:0 }}/>
+      <div style={{ overflow:'hidden', flex:1 }}>
+        <AnimatePresence mode="wait">
+          <motion.p key={idx}
+            initial={{ x:80, opacity:0 }} animate={{ x:0, opacity:1 }} exit={{ x:-80, opacity:0 }}
+            transition={{ duration:0.5 }}
+            style={{ fontFamily:'EB Garamond,serif', fontSize:'clamp(10px,2.5vw,13px)', color:'rgba(248,236,200,0.95)', margin:0, fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            {PROPHET_HEADLINES[idx]}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// House points notification toasts
+function PointsToasts({ msgs }: { msgs: PointMsg[] }) {
+  return (
+    <div style={{ position:'fixed', bottom:70, right:12, zIndex:150, pointerEvents:'none', display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
+      <AnimatePresence>
+        {msgs.map(m => (
+          <motion.div key={m.id} initial={{ x:120, opacity:0, scale:0.8 }} animate={{ x:0, opacity:1, scale:1 }} exit={{ x:120, opacity:0 }} transition={{ type:'spring', duration:0.4 }}
+            style={{ background:'linear-gradient(135deg,#740001,#ae0001)', border:'1px solid rgba(211,166,37,0.6)', color:'#f0c75e', fontFamily:'Cinzel,serif', fontSize:12, fontWeight:'bold', padding:'7px 14px', borderRadius:4, boxShadow:'0 4px 20px rgba(0,0,0,0.6)', whiteSpace:'nowrap' }}>
+            {m.text}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Snitch counter badge
+function SnitchCounter({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <motion.div initial={{ scale:0 }} animate={{ scale:1 }} style={{ position:'fixed', top:32, right:12, zIndex:115, background:'linear-gradient(135deg,#b8880a,#d3a625,#f0c75e)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:999, padding:'5px 12px', display:'flex', alignItems:'center', gap:6, boxShadow:'0 0 16px rgba(211,166,37,0.6)' }}>
+      <span style={{ fontSize:14 }}>🏆</span>
+      <span style={{ fontFamily:'Cinzel,serif', fontSize:11, fontWeight:'bold', color:'#1a0800' }}>{count} pts</span>
+    </motion.div>
+  );
+}
+
 // ── Envelope opening scene ─────────────────────────────────────
 type EnvState = 'sealed'|'cracking'|'opening'|'risen';
 
@@ -649,7 +821,38 @@ export default function App() {
   const [litCandles, setLitCandles] = useState<number[]>([...Array(CANDLE_COUNT).keys()]);
   const [allOut, setAllOut]         = useState(false);
   const [wish, setWish]             = useState('');
-  const spellRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const [lumos, setLumos]           = useState(false);
+  const [points, setPoints]         = useState(0);
+  const [pointsMsgs, setPointsMsgs] = useState<PointMsg[]>([]);
+  const spellRef  = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const tapTimes  = useRef<number[]>([]);
+  const msgCounter = useRef(0);
+
+  // Secret: 5 rapid taps anywhere → LUMOS!
+  useEffect(() => {
+    const onTouch = () => {
+      const now = Date.now();
+      tapTimes.current = [...tapTimes.current.filter(t => now-t < 1600), now];
+      if (tapTimes.current.length >= 5) {
+        tapTimes.current = [];
+        setLumos(true);
+        setTimeout(() => setLumos(false), 2400);
+      }
+    };
+    window.addEventListener('touchstart', onTouch, { passive: true });
+    return () => window.removeEventListener('touchstart', onTouch);
+  }, []);
+
+  function earnPoints(n=10) {
+    setPoints(p => p + n);
+    const msgs = [
+      `✨ +${n} points!`, `🏆 +${n} house points!`, `⚡ +${n} magical points!`,
+      `🪄 You caught a magic item! +${n}`, `🌟 +${n} Gryffindor points!`
+    ];
+    const id = msgCounter.current++;
+    setPointsMsgs(s => [...s.slice(-3), { id, text: msgs[Math.floor(Math.random()*msgs.length)] }]);
+    setTimeout(() => setPointsMsgs(s => s.filter(m => m.id !== id)), 2200);
+  }
 
   function castSpell(s: Spell, ms=4500) {
     if(spellRef.current) clearTimeout(spellRef.current);
@@ -682,6 +885,14 @@ export default function App() {
 
   return (
     <div style={{ position:'fixed', inset:0 }}>
+
+      {/* ── Always-on creative layers ── */}
+      <TouchSparkles/>
+      <FloatingHPItems onPop={()=>earnPoints(10)}/>
+      <LumosFlash active={lumos}/>
+      <DailyProphet/>
+      <SnitchCounter count={points}/>
+      <PointsToasts msgs={pointsMsgs}/>
 
       {/* Envelope intro — shown before everything else */}
       <AnimatePresence>
